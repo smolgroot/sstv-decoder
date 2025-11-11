@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAudioProcessor } from '@/hooks/useAudioProcessor';
-import { SSTV_MODES } from '@/lib/sstv/constants';
 import { DecoderState } from '@/lib/sstv/decoder';
 
 export default function SSTVDecoder() {
-  const [selectedMode, setSelectedMode] = useState<keyof typeof SSTV_MODES>('ROBOT36');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -19,7 +17,7 @@ export default function SSTVDecoder() {
     getImageData,
     getDimensions,
     getAnalyser,
-  } = useAudioProcessor(selectedMode);
+  } = useAudioProcessor();
 
   // Draw spectrum visualization
   const drawSpectrum = useCallback((canvas: HTMLCanvasElement) => {
@@ -159,22 +157,13 @@ export default function SSTVDecoder() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      link.download = `sstv-decode-${selectedMode}-${timestamp}.png`;
+      link.download = `sstv-decode-robot36-${timestamp}.png`;
       link.href = url;
       link.click();
 
       // Clean up
       URL.revokeObjectURL(url);
     }, 'image/png');
-  };
-
-  const handleModeChange = (mode: keyof typeof SSTV_MODES) => {
-    const wasRecording = state.isRecording;
-    if (wasRecording) {
-      stopRecording();
-    }
-    setSelectedMode(mode);
-    // Note: useAudioProcessor will recreate decoder with new mode
   };
 
   const getStateColor = () => {
@@ -193,20 +182,11 @@ export default function SSTVDecoder() {
     <div className="space-y-4 sm:space-y-6">
       {/* Controls */}
       <div className="bg-gray-900 rounded-lg p-4 sm:p-6 space-y-4">
-        {/* Mode selector - full width on mobile */}
-        <div className="w-full">
-          <select
-            value={selectedMode}
-            onChange={(e) => handleModeChange(e.target.value as keyof typeof SSTV_MODES)}
-            disabled={state.isRecording}
-            className="w-full bg-gray-800 text-white px-4 py-3 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-base"
-          >
-            {Object.keys(SSTV_MODES).map((mode) => (
-              <option key={mode} value={mode}>
-                {SSTV_MODES[mode as keyof typeof SSTV_MODES].name}
-              </option>
-            ))}
-          </select>
+        {/* Robot36 Mode Indicator */}
+        <div className="w-full text-center">
+          <span className="inline-block bg-blue-900 text-blue-200 px-4 py-2 rounded-md font-semibold text-sm sm:text-base">
+            Robot 36 Mode (320x240)
+          </span>
         </div>
 
         {/* Action buttons - full width on mobile, flex on larger screens */}
@@ -328,7 +308,6 @@ export default function SSTVDecoder() {
         </summary>
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           <ol className="list-decimal list-inside space-y-2 text-sm sm:text-base text-gray-300">
-            <li>Select an SSTV mode (Robot36, Martin M1, or Scottie S1)</li>
             <li>Click &quot;Start Decoding&quot; to begin capturing audio from your microphone</li>
             <li>Play an SSTV signal (you can use a signal generator or recording)</li>
             <li>Watch as the image is decoded in real-time on the canvas</li>

@@ -5,10 +5,7 @@ A simple web application for real-time SSTV (Slow Scan Television) decoding from
 ## Features
 
 - **Real-time Audio Processing**: Captures microphone input using Web Audio API
-- **SSTV Decoding**: Supports multiple SSTV modes:
-  - Robot36 (320x240)
-  - Martin M1 (320x256)
-  - Scottie S1 (320x256)
+- **SSTV Decoding**: Robot36 mode (320x240 resolution)
 - **Live Image Display**: Progressive image rendering on HTML canvas
 - **Save Image**: Export decoded images as PNG files with timestamped filenames
 - **Frequency Analysis**: Uses Goertzel algorithm for accurate frequency detection
@@ -59,16 +56,15 @@ npm start
 
 ## How to Use
 
-1. **Select SSTV Mode**: Choose the appropriate mode (Robot36, Martin M1, or Scottie S1) from the dropdown
-2. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
-3. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
-4. **Play SSTV Signal**: Play an SSTV signal near your microphone (from another device, radio, etc.)
-5. **Watch Live Decoding**: The decoded image will appear progressively on the canvas
-6. **Reset**: Click "Reset" to clear the canvas and start a new decode
-7. **Save Image**: Click "Save Image" to download the decoded image as a PNG file
-   - Filename format: `sstv-decode-{MODE}-{TIMESTAMP}.png`
+1. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
+2. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
+3. **Play SSTV Signal**: Play a Robot36 SSTV signal near your microphone (from another device, radio, etc.)
+4. **Watch Live Decoding**: The decoded image will appear progressively on the canvas
+5. **Reset**: Click "Reset" to clear the canvas and start a new decode
+6. **Save Image**: Click "Save Image" to download the decoded image as a PNG file
+   - Filename format: `sstv-decode-robot36-{TIMESTAMP}.png`
    - Example: `sstv-decode-robot36-20240315-143022.png`
-8. **Stop**: Click "Stop" to end the decoding session
+7. **Stop**: Click "Stop" to end the decoding session
 
 ## Technical Details
 
@@ -80,22 +76,14 @@ npm start
 - Sync Frequency: 1200 Hz
 - Low-pass Filter: Alpha = 0.2 for signal smoothing
 
-### SSTV Modes
+### Robot36 SSTV Mode
 
-#### Robot36
 - Resolution: 320x240 pixels
-- Color Format: YUV
+- Color Format: YUV (Y=88ms, R-Y=44ms, B-Y=44ms)
 - Scan Time: 150ms per line
-
-#### Martin M1
-- Resolution: 320x256 pixels
-- Color Format: RGB
-- Scan Time: 446.446ms per line
-
-#### Scottie S1
-- Resolution: 320x256 pixels
-- Color Format: RGB
-- Scan Time: 428.22ms per line
+- Sync Pulse: 9ms at 1200 Hz
+- Sync Porch: 3ms at 1500 Hz
+- Separators: 4.5ms and 1.5ms between color channels
 
 ### Image Export
 

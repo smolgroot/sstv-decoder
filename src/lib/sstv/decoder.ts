@@ -34,14 +34,17 @@ export class SSTVDecoder {
   private sampleCount = 0;
 
   private samplesPerMs: number;
-  private colorSamplesPerLine: number;
+  private ySamples: number;    // Y channel: 88ms
+  private rySamples: number;   // R-Y channel: 44ms
+  private bySamples: number;   // B-Y channel: 44ms
 
   private lowPassFilter: LowPassFilter;
   private currentFrequency = 0;
 
-  constructor(modeName: keyof typeof SSTV_MODES = 'ROBOT36') {
-    this.mode = SSTV_MODES[modeName];
-    this.imageData = new Uint8ClampedArray(this.mode.width * this.mode.height * 4);
+  constructor() {
+    // Robot36 only
+    this.mode = SSTV_MODES.ROBOT36;
+    this.imageData = new Uint8ClampedArray(320 * 240 * 4);
 
     // Initialize with black background
     for (let i = 0; i < this.imageData.length; i += 4) {
@@ -64,7 +67,11 @@ export class SSTVDecoder {
     this.lowPassFilter = new LowPassFilter(0.2); // Less filtering for faster response
 
     this.samplesPerMs = SAMPLE_RATE / 1000;
-    this.colorSamplesPerLine = Math.floor(this.mode.colorScanTime * this.samplesPerMs);
+    
+    // Robot36 specific: Y=88ms, R-Y=44ms, B-Y=44ms
+    this.ySamples = Math.floor(88 * this.samplesPerMs);
+    this.rySamples = Math.floor(44 * this.samplesPerMs);
+    this.bySamples = Math.floor(44 * this.samplesPerMs);
   }
 
   private generateFrequencyRange(start: number, end: number, steps: number): number[] {
@@ -102,109 +109,100 @@ export class SSTVDecoder {
   }
 
   private decodeImage(): void {
-    if (this.currentLine >= this.mode.height) {
+    if (this.currentLine >= 240) {
       this.state = DecoderState.IDLE;
       console.log('Image decode complete');
       return;
     }
 
-    // Calculate timing for current line
-    const totalLineSamples = Math.floor(this.mode.scanTime * this.samplesPerMs);
+    // Robot36 line structure:
+    // sync(9ms) + porch(3ms) + Y(88ms) + sep(4.5ms) + R-Y(44ms) + sep(1.5ms) + B-Y(44ms)
+    const totalLineSamples = Math.floor(150 * this.samplesPerMs); // 150ms per line
     const samplesIntoLine = this.sampleCount % totalLineSamples;
-    const syncSamples = Math.floor(this.mode.syncPulse * this.samplesPerMs);
-    const porchSamples = Math.floor(this.mode.syncPorch * this.samplesPerMs);
-    const separatorSamples = Math.floor(this.mode.separatorPulse * this.samplesPerMs);
+    const syncSamples = Math.floor(9 * this.samplesPerMs);
+    const porchSamples = Math.floor(3 * this.samplesPerMs);
+    const sep1Samples = Math.floor(4.5 * this.samplesPerMs);
+    const sep2Samples = Math.floor(1.5 * this.samplesPerMs);
 
-    // Check if we should advance to next line (when we wrap around)
+    // Check if we should advance to next line
     if (samplesIntoLine === 0 && this.sampleCount > 0) {
-      // Just wrapped to new line
       this.currentLine++;
-      this.currentPixel = 0;
-      this.currentColor = 0;
-
       if (this.currentLine % 20 === 0) {
-        console.log(`Decoding line ${this.currentLine}/${this.mode.height}`);
+        console.log(`Decoding line ${this.currentLine}/240`);
       }
-
-      if (this.currentLine >= this.mode.height) {
+      if (this.currentLine >= 240) {
         this.state = DecoderState.IDLE;
         console.log('Image decode complete');
         return;
       }
     }
 
-    // Skip sync and porch at start of line
+    // Skip sync and porch
     if (samplesIntoLine < syncSamples + porchSamples) {
       return;
     }
 
-    // Position after sync and porch
     const dataPosition = samplesIntoLine - syncSamples - porchSamples;
 
-    // Each line has: [Color1 data][Separator][Color2 data][Separator][Color3 data]
-    // Calculate total samples for one color + separator
-    const samplesPerColorBlock = this.colorSamplesPerLine + separatorSamples;
+    // Determine which channel we're in
+    let channelIndex = -1; // 0=Y, 1=R-Y, 2=B-Y
+    let positionInChannel = 0;
+    let channelSamples = 0;
 
-    // Total valid data region (all colors + all separators except the last one)
-    const totalDataSamples = (this.colorSamplesPerLine * this.mode.colorOrder.length) +
-                             (separatorSamples * (this.mode.colorOrder.length - 1));
-
-    // If we're beyond all valid data for this line, skip
-    if (dataPosition >= totalDataSamples) {
+    if (dataPosition < this.ySamples) {
+      // Y channel (luminance)
+      channelIndex = 0;
+      positionInChannel = dataPosition;
+      channelSamples = this.ySamples;
+    } else if (dataPosition < this.ySamples + sep1Samples) {
+      // First separator - skip
+      return;
+    } else if (dataPosition < this.ySamples + sep1Samples + this.rySamples) {
+      // R-Y channel (red chrominance)
+      channelIndex = 1;
+      positionInChannel = dataPosition - this.ySamples - sep1Samples;
+      channelSamples = this.rySamples;
+    } else if (dataPosition < this.ySamples + sep1Samples + this.rySamples + sep2Samples) {
+      // Second separator - skip
+      return;
+    } else if (dataPosition < this.ySamples + sep1Samples + this.rySamples + sep2Samples + this.bySamples) {
+      // B-Y channel (blue chrominance)
+      channelIndex = 2;
+      positionInChannel = dataPosition - this.ySamples - sep1Samples - this.rySamples - sep2Samples;
+      channelSamples = this.bySamples;
+    } else {
+      // Beyond valid data
       return;
     }
 
-    // Determine which color block we're in (0, 1, or 2)
-    const colorBlockIndex = Math.floor(dataPosition / samplesPerColorBlock);
-
-    if (colorBlockIndex >= this.mode.colorOrder.length) {
-      // Beyond all color data for this line
-      return;
-    }    // Position within this color block
-    const positionInBlock = dataPosition % samplesPerColorBlock;
-
-    // Skip separator pulse - only process if we're in the actual color scan time
-    if (positionInBlock >= this.colorSamplesPerLine) {
-      // We're in the separator region, skip it
+    // Calculate pixel position (0-319)
+    const pixelX = Math.floor((positionInChannel / channelSamples) * 320);
+    if (pixelX < 0 || pixelX >= 320) {
       return;
     }
 
-    // Calculate which pixel (0 to width-1)
-    const pixelX = Math.floor((positionInBlock / this.colorSamplesPerLine) * this.mode.width);
-
-    // Strict bounds check - reject invalid pixels
-    if (pixelX < 0 || pixelX >= this.mode.width) {
-      return;
-    }
-
-    // Track position
-    this.currentPixel = pixelX;
-    this.currentColor = colorBlockIndex;
-
-    // Convert frequency to pixel value
+    // Convert frequency to pixel value (0-255)
     const pixelValue = frequencyToPixel(this.currentFrequency, FREQ_BLACK, FREQ_WHITE);
 
-    // Debug first few pixels
-    if (this.currentLine === 0 && pixelX < 5 && colorBlockIndex === 0) {
-      console.log(`Pixel [${pixelX}] color ${colorBlockIndex}: freq=${this.currentFrequency.toFixed(0)}Hz -> value=${pixelValue}`);
-    }
-
-    // Set pixel in image data - write on every sample for continuous coverage
-    const pixelIndex = (this.currentLine * this.mode.width + pixelX) * 4;
-
+    // Set pixel in image data
+    const pixelIndex = (this.currentLine * 320 + pixelX) * 4;
     if (pixelIndex >= 0 && pixelIndex < this.imageData.length - 3) {
-      const colorChannel = this.mode.colorOrder[colorBlockIndex];
-
-      switch (colorChannel) {
-        case 'R':
-          this.imageData[pixelIndex] = pixelValue;
-          break;
-        case 'G':
-          this.imageData[pixelIndex + 1] = pixelValue;
-          break;
-        case 'B':
-          this.imageData[pixelIndex + 2] = pixelValue;
-          break;
+      // Store YUV components separately, then convert to RGB
+      if (channelIndex === 0) {
+        // Y (luminance) - store in all three channels as base
+        this.imageData[pixelIndex] = pixelValue;     // R
+        this.imageData[pixelIndex + 1] = pixelValue; // G
+        this.imageData[pixelIndex + 2] = pixelValue; // B
+      } else if (channelIndex === 1) {
+        // R-Y (red chrominance) - adjust red channel
+        const y = this.imageData[pixelIndex + 1]; // Get Y value from green (where we stored it)
+        const ry = (pixelValue - 128) * 1.14; // R-Y scaling factor
+        this.imageData[pixelIndex] = Math.max(0, Math.min(255, y + ry));
+      } else if (channelIndex === 2) {
+        // B-Y (blue chrominance) - adjust blue channel  
+        const y = this.imageData[pixelIndex + 1]; // Get Y value from green (where we stored it)
+        const by = (pixelValue - 128) * 2.03; // B-Y scaling factor
+        this.imageData[pixelIndex + 2] = Math.max(0, Math.min(255, y + by));
       }
     }
   }
@@ -222,10 +220,10 @@ export class SSTVDecoder {
   getStats(): DecoderStats {
     return {
       state: this.state,
-      mode: this.mode.name,
+      mode: 'Robot 36',
       currentLine: this.currentLine,
-      totalLines: this.mode.height,
-      progress: (this.currentLine / this.mode.height) * 100,
+      totalLines: 240,
+      progress: (this.currentLine / 240) * 100,
       frequency: Math.round(this.currentFrequency),
     };
   }
@@ -235,8 +233,8 @@ export class SSTVDecoder {
    */
   getDimensions(): { width: number; height: number } {
     return {
-      width: this.mode.width,
-      height: this.mode.height,
+      width: 320,
+      height: 240,
     };
   }
 
@@ -258,16 +256,6 @@ export class SSTVDecoder {
       this.imageData[i + 2] = 0;
       this.imageData[i + 3] = 255;
     }
-  }
-
-  /**
-   * Change SSTV mode
-   */
-  setMode(modeName: keyof typeof SSTV_MODES): void {
-    this.mode = SSTV_MODES[modeName];
-    this.imageData = new Uint8ClampedArray(this.mode.width * this.mode.height * 4);
-    this.colorSamplesPerLine = Math.floor(this.mode.colorScanTime * this.samplesPerMs);
-    this.reset();
   }
 
   /**

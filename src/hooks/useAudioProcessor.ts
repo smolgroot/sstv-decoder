@@ -9,7 +9,7 @@ export interface AudioProcessorState {
   stats: DecoderStats | null;
 }
 
-export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36') {
+export function useAudioProcessor() {
   const [state, setState] = useState<AudioProcessorState>({
     isRecording: false,
     isSupported: false,
@@ -44,9 +44,9 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
   // Initialize decoder
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      decoderRef.current = new SSTVDecoder(modeName);
+      decoderRef.current = new SSTVDecoder();
     }
-  }, [modeName]);
+  }, []);
 
   const startRecording = async () => {
     try {
