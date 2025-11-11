@@ -40,7 +40,7 @@ export class SSTVDecoder {
 
   private lowPassFilter: LowPassFilter;
   private currentFrequency = 0;
-  
+
   // Track last pixel written to avoid redundant writes
   private lastPixelX = -1;
   private lastPixelLine = -1;
@@ -132,7 +132,7 @@ export class SSTVDecoder {
       this.currentLine++;
       this.lastPixelX = -1; // Reset pixel tracking for new line
       this.lastChannelIndex = -1;
-      
+
       if (this.currentLine % 20 === 0) {
         console.log(`Decoding line ${this.currentLine}/240`);
       }
@@ -188,14 +188,14 @@ export class SSTVDecoder {
     }
 
     // Only write when we advance to a new pixel or channel
-    const pixelChanged = (pixelX !== this.lastPixelX || 
-                         this.currentLine !== this.lastPixelLine || 
+    const pixelChanged = (pixelX !== this.lastPixelX ||
+                         this.currentLine !== this.lastPixelLine ||
                          channelIndex !== this.lastChannelIndex);
-    
+
     if (!pixelChanged) {
       return; // Skip redundant writes to the same pixel
     }
-    
+
     this.lastPixelX = pixelX;
     this.lastPixelLine = this.currentLine;
     this.lastChannelIndex = channelIndex;
