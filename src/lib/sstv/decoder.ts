@@ -177,23 +177,23 @@ export class SSTVDecoder {
 
     // Position after sync and porch
     const dataPosition = samplesIntoLine - syncSamples - porchSamples;
-    
+
     // Each line has: [Color1 data][Separator][Color2 data][Separator][Color3 data]
     // Calculate total samples for one color + separator
     const samplesPerColorBlock = this.colorSamplesPerLine + separatorSamples;
-    
+
     // Total valid data region (all colors + all separators except the last one)
-    const totalDataSamples = (this.colorSamplesPerLine * this.mode.colorOrder.length) + 
+    const totalDataSamples = (this.colorSamplesPerLine * this.mode.colorOrder.length) +
                              (separatorSamples * (this.mode.colorOrder.length - 1));
-    
+
     // If we're beyond all valid data for this line, skip
     if (dataPosition >= totalDataSamples) {
       return;
     }
-    
+
     // Determine which color block we're in (0, 1, or 2)
     const colorBlockIndex = Math.floor(dataPosition / samplesPerColorBlock);
-    
+
     if (colorBlockIndex >= this.mode.colorOrder.length) {
       // Beyond all color data for this line
       return;
