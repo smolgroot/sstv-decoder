@@ -155,14 +155,14 @@ export default function SSTVDecoder() {
     // Create a download link
     canvas.toBlob((blob) => {
       if (!blob) return;
-      
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       link.download = `sstv-decode-${selectedMode}-${timestamp}.png`;
       link.href = url;
       link.click();
-      
+
       // Clean up
       URL.revokeObjectURL(url);
     }, 'image/png');

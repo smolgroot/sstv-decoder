@@ -28,10 +28,10 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
   useEffect(() => {
     const checkSupport = () => {
       const hasAudioContext = typeof window !== 'undefined' && 'AudioContext' in window;
-      const hasMediaDevices = typeof navigator !== 'undefined' && 
-                              navigator.mediaDevices && 
+      const hasMediaDevices = typeof navigator !== 'undefined' &&
+                              navigator.mediaDevices &&
                               typeof navigator.mediaDevices.getUserMedia === 'function';
-      
+
       setState(prev => ({
         ...prev,
         isSupported: hasAudioContext && hasMediaDevices
@@ -52,10 +52,10 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
     try {
       // Check support at call time, not from state
       const hasAudioContext = typeof window !== 'undefined' && 'AudioContext' in window;
-      const hasMediaDevices = typeof navigator !== 'undefined' && 
-                              navigator.mediaDevices && 
+      const hasMediaDevices = typeof navigator !== 'undefined' &&
+                              navigator.mediaDevices &&
                               typeof navigator.mediaDevices.getUserMedia === 'function';
-      
+
       if (!hasAudioContext || !hasMediaDevices) {
         throw new Error('Web Audio API not supported in this browser');
       }
