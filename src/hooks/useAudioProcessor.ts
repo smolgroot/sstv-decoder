@@ -12,7 +12,7 @@ export interface AudioProcessorState {
 export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36') {
   const [state, setState] = useState<AudioProcessorState>({
     isRecording: false,
-    isSupported: typeof window !== 'undefined' && 'AudioContext' in window,
+    isSupported: false,
     error: null,
     stats: null,
   });
@@ -24,6 +24,23 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
   const animationFrameRef = useRef<number | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
 
+  // Check browser support on mount
+  useEffect(() => {
+    const checkSupport = () => {
+      const hasAudioContext = typeof window !== 'undefined' && 'AudioContext' in window;
+      const hasMediaDevices = typeof navigator !== 'undefined' && 
+                              navigator.mediaDevices && 
+                              typeof navigator.mediaDevices.getUserMedia === 'function';
+      
+      setState(prev => ({
+        ...prev,
+        isSupported: hasAudioContext && hasMediaDevices
+      }));
+    };
+
+    checkSupport();
+  }, []);
+
   // Initialize decoder
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -33,7 +50,13 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
 
   const startRecording = async () => {
     try {
-      if (!state.isSupported) {
+      // Check support at call time, not from state
+      const hasAudioContext = typeof window !== 'undefined' && 'AudioContext' in window;
+      const hasMediaDevices = typeof navigator !== 'undefined' && 
+                              navigator.mediaDevices && 
+                              typeof navigator.mediaDevices.getUserMedia === 'function';
+      
+      if (!hasAudioContext || !hasMediaDevices) {
         throw new Error('Web Audio API not supported in this browser');
       }
 

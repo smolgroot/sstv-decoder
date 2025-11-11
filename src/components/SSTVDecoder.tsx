@@ -148,6 +148,26 @@ export default function SSTVDecoder() {
     resetDecoder();
   };
 
+  const handleSaveImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create a download link
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      link.download = `sstv-decode-${selectedMode}-${timestamp}.png`;
+      link.href = url;
+      link.click();
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+
   const handleModeChange = (mode: keyof typeof SSTV_MODES) => {
     const wasRecording = state.isRecording;
     if (wasRecording) {
@@ -214,6 +234,16 @@ export default function SSTVDecoder() {
             className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
           >
             Reset
+          </button>
+
+          <button
+            onClick={handleSaveImage}
+            className="w-full sm:flex-1 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold px-6 py-3 rounded-md transition-colors text-base flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Save Image
           </button>
         </div>
 

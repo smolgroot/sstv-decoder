@@ -1,38 +1,40 @@
 # SSTV Decoder Web Application
 
-A real-time SSTV (Slow Scan Television) decoder web application built with Next.js. Decode SSTV signals from your microphone directly in your browser - similar to the Robot36 Android app.
+A simple web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Similar to the Robot36 Android app functionality.
 
 ## Features
 
-- **Real-time SSTV Decoding**: Captures audio from your microphone and decodes SSTV signals in real-time
-- **Multiple SSTV Modes**: Supports Robot36, Martin M1, and Scottie S1 modes
-- **Live Image Display**: Progressive image rendering on HTML canvas as the signal is decoded
-- **Audio Spectrum Visualization**: Real-time frequency spectrum analyzer
-- **Web Audio API**: Efficient audio processing using browser-native APIs
-- **TypeScript**: Full type safety throughout the codebase
-- **Responsive Design**: Modern UI with Tailwind CSS
+- **Real-time Audio Processing**: Captures microphone input using Web Audio API
+- **SSTV Decoding**: Supports multiple SSTV modes:
+  - Robot36 (320x240)
+  - Martin M1 (320x256)
+  - Scottie S1 (320x256)
+- **Live Image Display**: Progressive image rendering on HTML canvas
+- **Save Image**: Export decoded images as PNG files with timestamped filenames
+- **Frequency Analysis**: Uses Goertzel algorithm for accurate frequency detection
+- **Mobile-First Design**: Fully responsive UI optimized for mobile devices
+- **Digital Signal Processing**: Includes low-pass filtering for signal smoothing
 
 ## Technology Stack
 
-- **Next.js 15**: React framework with App Router
+- **Next.js 14+**: React framework with App Router
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first styling
-- **Web Audio API**: Microphone access and audio processing
-- **Canvas API**: Image rendering and visualization
+- **Web Audio API**: Real-time audio capture and processing
+- **Canvas API**: Image rendering
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ installed
-- A modern web browser with Web Audio API support
-- Microphone access
+- A modern web browser with microphone access
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
+git clone <repository-url>
 cd sstv-decoder
 ```
 
@@ -57,76 +59,88 @@ npm start
 
 ## How to Use
 
-1. **Select SSTV Mode**: Choose between Robot36, Martin M1, or Scottie S1
-2. **Start Decoding**: Click "Start Decoding" to enable microphone access
-3. **Play SSTV Signal**: Play an SSTV audio signal (from a recording or generator)
-4. **Watch Decoding**: The image will appear progressively on the canvas
-5. **Reset/Stop**: Use the Reset button to clear and restart, or Stop to end the session
+1. **Select SSTV Mode**: Choose the appropriate mode (Robot36, Martin M1, or Scottie S1) from the dropdown
+2. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
+3. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
+4. **Play SSTV Signal**: Play an SSTV signal near your microphone (from another device, radio, etc.)
+5. **Watch Live Decoding**: The decoded image will appear progressively on the canvas
+6. **Reset**: Click "Reset" to clear the canvas and start a new decode
+7. **Save Image**: Click "Save Image" to download the decoded image as a PNG file
+   - Filename format: `sstv-decode-{MODE}-{TIMESTAMP}.png`
+   - Example: `sstv-decode-robot36-20240315-143022.png`
+8. **Stop**: Click "Stop" to end the decoding session
 
-## SSTV Signal Sources
+## Technical Details
 
-To test the decoder, you can:
-- Use online SSTV signal generators
-- Play pre-recorded SSTV audio files
-- Receive actual SSTV transmissions from ham radio operators
-- Use SSTV encoding software like MMSSTV or Robot36
+### Audio Processing
 
-## Architecture
+- Sample Rate: 44.1 kHz
+- Frequency Detection: Goertzel algorithm with 60 frequency bins
+- Frequency Range: 1500 Hz (black) to 2300 Hz (white)
+- Sync Frequency: 1200 Hz
+- Low-pass Filter: Alpha = 0.2 for signal smoothing
 
-### Core Components
+### SSTV Modes
 
-- **`src/lib/sstv/decoder.ts`**: Main SSTV decoding engine
-- **`src/lib/sstv/dsp.ts`**: Digital signal processing (Goertzel filters, frequency detection)
-- **`src/lib/sstv/constants.ts`**: SSTV mode specifications and frequency constants
-- **`src/hooks/useAudioProcessor.ts`**: React hook for audio capture and processing
-- **`src/components/SSTVDecoder.tsx`**: Main UI component with controls and canvas
+#### Robot36
+- Resolution: 320x240 pixels
+- Color Format: YUV
+- Scan Time: 150ms per line
 
-### Decoding Process
+#### Martin M1
+- Resolution: 320x256 pixels
+- Color Format: RGB
+- Scan Time: 446.446ms per line
 
-1. **Audio Capture**: Web Audio API captures microphone input at 44.1kHz
-2. **Frequency Detection**: Goertzel filters detect specific SSTV frequencies
-3. **Sync Detection**: Identifies sync pulses (1200 Hz) to start decoding
-4. **Line Decoding**: Converts frequency values to pixel brightness (1500-2300 Hz)
-5. **Color Composition**: Assembles RGB channels according to mode specification
-6. **Canvas Rendering**: Updates the canvas in real-time as lines are decoded
+#### Scottie S1
+- Resolution: 320x256 pixels
+- Color Format: RGB
+- Scan Time: 428.22ms per line
+
+### Image Export
+
+- Format: PNG (lossless compression)
+- Resolution: Matches selected SSTV mode
+- Filename: Includes mode and timestamp for easy identification
+- Method: Canvas.toBlob() API for efficient conversion
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── layout.tsx          # Root layout
+│   ├── page.tsx            # Home page
+│   └── globals.css         # Global styles
+├── components/
+│   └── SSTVDecoder.tsx     # Main decoder component
+├── hooks/
+│   └── useAudioProcessor.ts # Audio processing hook
+└── lib/
+    └── sstv/
+        ├── constants.ts    # SSTV mode specifications
+        ├── decoder.ts      # Main decoder logic
+        └── dsp.ts          # Digital signal processing utilities
+```
 
 ## Browser Compatibility
 
 - Chrome/Edge: Full support
 - Firefox: Full support
-- Safari: Full support (requires HTTPS for microphone access)
-- Mobile browsers: Limited support (microphone API availability varies)
+- Safari: Full support (iOS 14.5+)
+- Requires HTTPS for microphone access (except on localhost)
 
-## Deployment
+## Known Limitations
 
-This application is ready to deploy on Vercel:
-
-```bash
-npm install -g vercel
-vercel
-```
-
-Or connect your GitHub repository to Vercel for automatic deployments.
+- No automatic sync detection - starts decoding immediately
+- Works best with clean, strong SSTV signals
+- Background noise may affect decoding quality
 
 ## License
 
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+[Your License Here]
 
 ## Acknowledgments
 
 - Inspired by the Robot36 Android application
-- SSTV protocol specifications from the amateur radio community
-- Goertzel algorithm for efficient frequency detection
-
-## Future Enhancements
-
-- [ ] VIS code auto-detection for automatic mode selection
-- [ ] Image saving/export functionality
-- [ ] Additional SSTV modes (PD modes, Wraase modes)
-- [ ] Audio file upload for offline decoding
-- [ ] Signal strength meter and quality indicator
-- [ ] WebAssembly port for improved performance
+- SSTV protocol specifications from various amateur radio sources
