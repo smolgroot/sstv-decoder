@@ -10,8 +10,6 @@ import { FrequencyDetector, frequencyToPixel, LowPassFilter } from './dsp';
 
 export enum DecoderState {
   IDLE = 'IDLE',
-  DETECTING_SYNC = 'DETECTING_SYNC',
-  DETECTING_VIS = 'DETECTING_VIS',
   DECODING_IMAGE = 'DECODING_IMAGE',
 }
 
@@ -34,8 +32,6 @@ export class SSTVDecoder {
 
   private frequencyDetector: FrequencyDetector;
   private sampleCount = 0;
-  private syncDetectCount = 0;
-  private readonly syncThreshold = 10; // Number of consecutive sync samples needed
 
   private samplesPerMs: number;
   private colorSamplesPerLine: number;
@@ -56,15 +52,16 @@ export class SSTVDecoder {
     }
 
     // Setup frequency detection for key frequencies
+    // More frequency bins for better resolution (1500-2300Hz in ~13Hz steps)
     const detectionFreqs = [
       FREQ_SYNC,
       FREQ_BLACK,
-      ...this.generateFrequencyRange(FREQ_BLACK, FREQ_WHITE, 20),
+      ...this.generateFrequencyRange(FREQ_BLACK, FREQ_WHITE, 60),
       FREQ_WHITE,
     ];
 
     this.frequencyDetector = new FrequencyDetector(SAMPLE_RATE, detectionFreqs);
-    this.lowPassFilter = new LowPassFilter(0.3);
+    this.lowPassFilter = new LowPassFilter(0.2); // Less filtering for faster response
 
     this.samplesPerMs = SAMPLE_RATE / 1000;
     this.colorSamplesPerLine = Math.floor(this.mode.colorScanTime * this.samplesPerMs);
@@ -92,49 +89,15 @@ export class SSTVDecoder {
     this.frequencyDetector.processSample(sample);
     this.sampleCount++;
 
-    // Get frequency on every sample (Goertzel accumulates internally)
-    // We use a small window size so we get frequent updates
-    if (this.sampleCount % 50 === 0) {
+    // Get frequency more frequently for better resolution
+    if (this.sampleCount % 20 === 0) {
       const freq = this.frequencyDetector.getFrequency();
       this.currentFrequency = this.lowPassFilter.process(freq);
     }
 
-    // Process state machine on every sample
-    switch (this.state) {
-      case DecoderState.IDLE:
-      case DecoderState.DETECTING_SYNC:
-        if (this.sampleCount % 100 === 0) {
-          this.detectSync();
-        }
-        break;
-      case DecoderState.DECODING_IMAGE:
-        // Decode on every sample to get accurate pixel placement
-        this.decodeImage();
-        break;
-    }
-  }
-
-  private detectSync(): void {
-    const syncMagnitude = this.frequencyDetector.getMagnitude(FREQ_SYNC);
-    const threshold = 50; // Adjust based on signal strength
-
-    // Debug: log signal strength periodically
-    if (this.sampleCount % 44100 === 0) { // Every second
-      console.log(`Sync detection: magnitude=${syncMagnitude.toFixed(1)}, freq=${this.currentFrequency.toFixed(0)}Hz`);
-    }
-
-    if (syncMagnitude > threshold) {
-      this.syncDetectCount++;
-      if (this.syncDetectCount >= this.syncThreshold) {
-        this.state = DecoderState.DECODING_IMAGE;
-        this.currentLine = 0;
-        this.currentPixel = 0;
-        this.currentColor = 0;
-        this.sampleCount = 0;
-        console.log('🎯 Sync detected, starting decode!');
-      }
-    } else {
-      this.syncDetectCount = 0;
+    // Always decode when active - no sync detection
+    if (this.state === DecoderState.DECODING_IMAGE) {
+      this.decodeImage();
     }
   }
 
@@ -152,14 +115,14 @@ export class SSTVDecoder {
     const porchSamples = Math.floor(this.mode.syncPorch * this.samplesPerMs);
     const separatorSamples = Math.floor(this.mode.separatorPulse * this.samplesPerMs);
 
-    // Check if we should advance to next line
-    if (samplesIntoLine < 10 && this.sampleCount > totalLineSamples) {
+    // Check if we should advance to next line (when we wrap around)
+    if (samplesIntoLine === 0 && this.sampleCount > 0) {
       // Just wrapped to new line
       this.currentLine++;
       this.currentPixel = 0;
       this.currentColor = 0;
 
-      if (this.currentLine % 10 === 0) {
+      if (this.currentLine % 20 === 0) {
         console.log(`Decoding line ${this.currentLine}/${this.mode.height}`);
       }
 
@@ -214,36 +177,34 @@ export class SSTVDecoder {
       return;
     }
 
-    // Only update if we've moved to a new pixel or color channel
-    if (pixelX !== this.currentPixel || colorBlockIndex !== this.currentColor) {
-      this.currentPixel = pixelX;
-      this.currentColor = colorBlockIndex;
+    // Track position
+    this.currentPixel = pixelX;
+    this.currentColor = colorBlockIndex;
 
-      // Convert frequency to pixel value
-      const pixelValue = frequencyToPixel(this.currentFrequency, FREQ_BLACK, FREQ_WHITE);
+    // Convert frequency to pixel value
+    const pixelValue = frequencyToPixel(this.currentFrequency, FREQ_BLACK, FREQ_WHITE);
 
-      // Debug first few pixels
-      if (this.currentLine === 0 && pixelX < 5 && colorBlockIndex === 0) {
-        console.log(`Pixel [${pixelX}] color ${colorBlockIndex}: freq=${this.currentFrequency.toFixed(0)}Hz -> value=${pixelValue}`);
-      }
+    // Debug first few pixels
+    if (this.currentLine === 0 && pixelX < 5 && colorBlockIndex === 0) {
+      console.log(`Pixel [${pixelX}] color ${colorBlockIndex}: freq=${this.currentFrequency.toFixed(0)}Hz -> value=${pixelValue}`);
+    }
 
-      // Set pixel in image data
-      const pixelIndex = (this.currentLine * this.mode.width + pixelX) * 4;
+    // Set pixel in image data - write on every sample for continuous coverage
+    const pixelIndex = (this.currentLine * this.mode.width + pixelX) * 4;
 
-      if (pixelIndex >= 0 && pixelIndex < this.imageData.length - 3) {
-        const colorChannel = this.mode.colorOrder[colorBlockIndex];
+    if (pixelIndex >= 0 && pixelIndex < this.imageData.length - 3) {
+      const colorChannel = this.mode.colorOrder[colorBlockIndex];
 
-        switch (colorChannel) {
-          case 'R':
-            this.imageData[pixelIndex] = pixelValue;
-            break;
-          case 'G':
-            this.imageData[pixelIndex + 1] = pixelValue;
-            break;
-          case 'B':
-            this.imageData[pixelIndex + 2] = pixelValue;
-            break;
-        }
+      switch (colorChannel) {
+        case 'R':
+          this.imageData[pixelIndex] = pixelValue;
+          break;
+        case 'G':
+          this.imageData[pixelIndex + 1] = pixelValue;
+          break;
+        case 'B':
+          this.imageData[pixelIndex + 2] = pixelValue;
+          break;
       }
     }
   }
@@ -283,12 +244,10 @@ export class SSTVDecoder {
    * Reset decoder
    */
   reset(): void {
-    this.state = DecoderState.IDLE;
     this.currentLine = 0;
     this.currentPixel = 0;
     this.currentColor = 0;
     this.sampleCount = 0;
-    this.syncDetectCount = 0;
     this.frequencyDetector.reset();
     this.lowPassFilter.reset();
 
@@ -312,11 +271,12 @@ export class SSTVDecoder {
   }
 
   /**
-   * Start decoding
+   * Start decoding - immediately begin decoding without sync detection
    */
   start(): void {
     this.reset();
-    this.state = DecoderState.DETECTING_SYNC;
+    this.state = DecoderState.DECODING_IMAGE;
+    console.log('Starting SSTV decode - will show noise until signal arrives');
   }
 
   /**

@@ -162,8 +162,6 @@ export default function SSTVDecoder() {
     switch (state.stats.state) {
       case DecoderState.IDLE:
         return 'text-gray-400';
-      case DecoderState.DETECTING_SYNC:
-        return 'text-yellow-400';
       case DecoderState.DECODING_IMAGE:
         return 'text-green-400';
       default:

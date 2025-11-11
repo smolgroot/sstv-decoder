@@ -20,13 +20,13 @@ export const SSTV_MODES: { [key: string]: SSTVMode } = {
     visCode: 8,
     width: 320,
     height: 240,
-    scanTime: 150, // Approximate total time for sync + porch + data
+    scanTime: 150, // Total: sync(9) + porch(3) + Y(88) + separator(4.5) + chroma(44)
     syncPulse: 9,
     syncPorch: 3,
     porchFreq: 1500,
     separatorPulse: 4.5,
-    colorScanTime: 44, // Simplified - actual Robot36 is more complex with YUV
-    colorOrder: ['R', 'G', 'B'],
+    colorScanTime: 44, // Y=88ms for full width, chroma=44ms for half resolution
+    colorOrder: ['R', 'G', 'B'], // Simplified RGB sequential for easier decoding
   },
   MARTIN_M1: {
     name: 'Martin M1',
