@@ -40,6 +40,11 @@ export class SSTVDecoder {
 
   private lowPassFilter: LowPassFilter;
   private currentFrequency = 0;
+  
+  // Track last pixel written to avoid redundant writes
+  private lastPixelX = -1;
+  private lastPixelLine = -1;
+  private lastChannelIndex = -1;
 
   constructor() {
     // Robot36 only
@@ -96,11 +101,9 @@ export class SSTVDecoder {
     this.frequencyDetector.processSample(sample);
     this.sampleCount++;
 
-    // Get frequency more frequently for better resolution
-    if (this.sampleCount % 20 === 0) {
-      const freq = this.frequencyDetector.getFrequency();
-      this.currentFrequency = this.lowPassFilter.process(freq);
-    }
+    // Get frequency on every sample for maximum resolution
+    const freq = this.frequencyDetector.getFrequency();
+    this.currentFrequency = this.lowPassFilter.process(freq);
 
     // Always decode when active - no sync detection
     if (this.state === DecoderState.DECODING_IMAGE) {
@@ -127,6 +130,9 @@ export class SSTVDecoder {
     // Check if we should advance to next line
     if (samplesIntoLine === 0 && this.sampleCount > 0) {
       this.currentLine++;
+      this.lastPixelX = -1; // Reset pixel tracking for new line
+      this.lastChannelIndex = -1;
+      
       if (this.currentLine % 20 === 0) {
         console.log(`Decoding line ${this.currentLine}/240`);
       }
@@ -181,6 +187,19 @@ export class SSTVDecoder {
       return;
     }
 
+    // Only write when we advance to a new pixel or channel
+    const pixelChanged = (pixelX !== this.lastPixelX || 
+                         this.currentLine !== this.lastPixelLine || 
+                         channelIndex !== this.lastChannelIndex);
+    
+    if (!pixelChanged) {
+      return; // Skip redundant writes to the same pixel
+    }
+    
+    this.lastPixelX = pixelX;
+    this.lastPixelLine = this.currentLine;
+    this.lastChannelIndex = channelIndex;
+
     // Convert frequency to pixel value (0-255)
     const pixelValue = frequencyToPixel(this.currentFrequency, FREQ_BLACK, FREQ_WHITE);
 
@@ -195,17 +214,17 @@ export class SSTVDecoder {
         // R-Y (red chrominance) - convert YUV to RGB
         const y = this.imageData[pixelIndex + 1]; // Get Y value
         const ry = pixelValue - 128; // Center chrominance around 0
-        
+
         // R = Y + R-Y
         this.imageData[pixelIndex] = Math.max(0, Math.min(255, y + ry));
       } else if (channelIndex === 2) {
         // B-Y (blue chrominance) - convert YUV to RGB
         const y = this.imageData[pixelIndex + 1]; // Get Y value
         const by = pixelValue - 128; // Center chrominance around 0
-        
+
         // B = Y + B-Y
         this.imageData[pixelIndex + 2] = Math.max(0, Math.min(255, y + by));
-        
+
         // Now calculate G using the YUV to RGB formula:
         // G = Y - 0.299*R-Y/0.587 - 0.114*B-Y/0.587
         // Simplified: G = Y - 0.509*(R-Y) - 0.194*(B-Y)
@@ -256,6 +275,9 @@ export class SSTVDecoder {
     this.currentPixel = 0;
     this.currentColor = 0;
     this.sampleCount = 0;
+    this.lastPixelX = -1;
+    this.lastPixelLine = -1;
+    this.lastChannelIndex = -1;
     this.frequencyDetector.reset();
     this.lowPassFilter.reset();
 
