@@ -67,7 +67,7 @@ export class SSTVDecoder {
     this.lowPassFilter = new LowPassFilter(0.2); // Less filtering for faster response
 
     this.samplesPerMs = SAMPLE_RATE / 1000;
-    
+
     // Robot36 specific: Y=88ms, R-Y=44ms, B-Y=44ms
     this.ySamples = Math.floor(88 * this.samplesPerMs);
     this.rySamples = Math.floor(44 * this.samplesPerMs);
@@ -187,27 +187,37 @@ export class SSTVDecoder {
     // Set pixel in image data
     const pixelIndex = (this.currentLine * 320 + pixelX) * 4;
     if (pixelIndex >= 0 && pixelIndex < this.imageData.length - 3) {
-      // Store YUV components separately, then convert to RGB
+      // Robot36 uses YUV color space - need proper conversion to RGB
       if (channelIndex === 0) {
-        // Y (luminance) - store in all three channels as base
-        this.imageData[pixelIndex] = pixelValue;     // R
-        this.imageData[pixelIndex + 1] = pixelValue; // G
-        this.imageData[pixelIndex + 2] = pixelValue; // B
+        // Y (luminance) - store temporarily in green channel
+        this.imageData[pixelIndex + 1] = pixelValue; // Store Y in G channel
       } else if (channelIndex === 1) {
-        // R-Y (red chrominance) - adjust red channel
-        const y = this.imageData[pixelIndex + 1]; // Get Y value from green (where we stored it)
-        const ry = (pixelValue - 128) * 1.14; // R-Y scaling factor
+        // R-Y (red chrominance) - convert YUV to RGB
+        const y = this.imageData[pixelIndex + 1]; // Get Y value
+        const ry = pixelValue - 128; // Center chrominance around 0
+        
+        // R = Y + R-Y
         this.imageData[pixelIndex] = Math.max(0, Math.min(255, y + ry));
       } else if (channelIndex === 2) {
-        // B-Y (blue chrominance) - adjust blue channel  
-        const y = this.imageData[pixelIndex + 1]; // Get Y value from green (where we stored it)
-        const by = (pixelValue - 128) * 2.03; // B-Y scaling factor
+        // B-Y (blue chrominance) - convert YUV to RGB
+        const y = this.imageData[pixelIndex + 1]; // Get Y value
+        const by = pixelValue - 128; // Center chrominance around 0
+        
+        // B = Y + B-Y
         this.imageData[pixelIndex + 2] = Math.max(0, Math.min(255, y + by));
+        
+        // Now calculate G using the YUV to RGB formula:
+        // G = Y - 0.299*R-Y/0.587 - 0.114*B-Y/0.587
+        // Simplified: G = Y - 0.509*(R-Y) - 0.194*(B-Y)
+        const r = this.imageData[pixelIndex];
+        const b = this.imageData[pixelIndex + 2];
+        const ry = r - y;
+        const by_val = b - y;
+        const g = y - 0.509 * ry - 0.194 * by_val;
+        this.imageData[pixelIndex + 1] = Math.max(0, Math.min(255, g));
       }
     }
-  }
-
-  /**
+  }  /**
    * Get current image data
    */
   getImageData(): Uint8ClampedArray {
