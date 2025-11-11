@@ -68,11 +68,11 @@ export function useAudioProcessor(modeName: keyof typeof SSTV_MODES = 'ROBOT36')
 
       processor.onaudioprocess = (event) => {
         const inputData = event.inputBuffer.getChannelData(0);
-        
+
         // Process audio with SSTV decoder
         if (decoderRef.current) {
           decoderRef.current.processSamples(inputData);
-          
+
           // Update stats
           const stats = decoderRef.current.getStats();
           setState(prev => ({ ...prev, stats }));

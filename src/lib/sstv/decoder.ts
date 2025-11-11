@@ -31,22 +31,22 @@ export class SSTVDecoder {
   private currentLine = 0;
   private currentPixel = 0;
   private currentColor = 0;
-  
+
   private frequencyDetector: FrequencyDetector;
   private sampleCount = 0;
   private syncDetectCount = 0;
   private readonly syncThreshold = 10; // Number of consecutive sync samples needed
-  
+
   private samplesPerMs: number;
   private colorSamplesPerLine: number;
-  
+
   private lowPassFilter: LowPassFilter;
   private currentFrequency = 0;
 
   constructor(modeName: keyof typeof SSTV_MODES = 'ROBOT36') {
     this.mode = SSTV_MODES[modeName];
     this.imageData = new Uint8ClampedArray(this.mode.width * this.mode.height * 4);
-    
+
     // Initialize with black background
     for (let i = 0; i < this.imageData.length; i += 4) {
       this.imageData[i] = 0;     // R
@@ -62,10 +62,10 @@ export class SSTVDecoder {
       ...this.generateFrequencyRange(FREQ_BLACK, FREQ_WHITE, 20),
       FREQ_WHITE,
     ];
-    
+
     this.frequencyDetector = new FrequencyDetector(SAMPLE_RATE, detectionFreqs);
     this.lowPassFilter = new LowPassFilter(0.3);
-    
+
     this.samplesPerMs = SAMPLE_RATE / 1000;
     this.colorSamplesPerLine = Math.floor(this.mode.colorScanTime * this.samplesPerMs);
   }
@@ -98,7 +98,7 @@ export class SSTVDecoder {
       const freq = this.frequencyDetector.getFrequency();
       this.currentFrequency = this.lowPassFilter.process(freq);
     }
-    
+
     // Process state machine on every sample
     switch (this.state) {
       case DecoderState.IDLE:
@@ -158,11 +158,11 @@ export class SSTVDecoder {
       this.currentLine++;
       this.currentPixel = 0;
       this.currentColor = 0;
-      
+
       if (this.currentLine % 10 === 0) {
         console.log(`Decoding line ${this.currentLine}/${this.mode.height}`);
       }
-      
+
       if (this.currentLine >= this.mode.height) {
         this.state = DecoderState.IDLE;
         console.log('Image decode complete');
@@ -182,50 +182,57 @@ export class SSTVDecoder {
     // Calculate total samples for one color + separator
     const samplesPerColorBlock = this.colorSamplesPerLine + separatorSamples;
     
+    // Total valid data region (all colors + all separators except the last one)
+    const totalDataSamples = (this.colorSamplesPerLine * this.mode.colorOrder.length) + 
+                             (separatorSamples * (this.mode.colorOrder.length - 1));
+    
+    // If we're beyond all valid data for this line, skip
+    if (dataPosition >= totalDataSamples) {
+      return;
+    }
+    
     // Determine which color block we're in (0, 1, or 2)
     const colorBlockIndex = Math.floor(dataPosition / samplesPerColorBlock);
     
     if (colorBlockIndex >= this.mode.colorOrder.length) {
       // Beyond all color data for this line
       return;
-    }
-
-    // Position within this color block
+    }    // Position within this color block
     const positionInBlock = dataPosition % samplesPerColorBlock;
-    
+
     // Skip separator pulse - only process if we're in the actual color scan time
     if (positionInBlock >= this.colorSamplesPerLine) {
       // We're in the separator region, skip it
       return;
     }
-    
+
     // Calculate which pixel (0 to width-1)
     const pixelX = Math.floor((positionInBlock / this.colorSamplesPerLine) * this.mode.width);
-    
+
     // Strict bounds check - reject invalid pixels
     if (pixelX < 0 || pixelX >= this.mode.width) {
       return;
     }
-    
+
     // Only update if we've moved to a new pixel or color channel
     if (pixelX !== this.currentPixel || colorBlockIndex !== this.currentColor) {
       this.currentPixel = pixelX;
       this.currentColor = colorBlockIndex;
-      
+
       // Convert frequency to pixel value
       const pixelValue = frequencyToPixel(this.currentFrequency, FREQ_BLACK, FREQ_WHITE);
-      
+
       // Debug first few pixels
       if (this.currentLine === 0 && pixelX < 5 && colorBlockIndex === 0) {
         console.log(`Pixel [${pixelX}] color ${colorBlockIndex}: freq=${this.currentFrequency.toFixed(0)}Hz -> value=${pixelValue}`);
       }
-      
+
       // Set pixel in image data
       const pixelIndex = (this.currentLine * this.mode.width + pixelX) * 4;
-      
+
       if (pixelIndex >= 0 && pixelIndex < this.imageData.length - 3) {
         const colorChannel = this.mode.colorOrder[colorBlockIndex];
-        
+
         switch (colorChannel) {
           case 'R':
             this.imageData[pixelIndex] = pixelValue;
@@ -284,7 +291,7 @@ export class SSTVDecoder {
     this.syncDetectCount = 0;
     this.frequencyDetector.reset();
     this.lowPassFilter.reset();
-    
+
     // Clear image
     for (let i = 0; i < this.imageData.length; i += 4) {
       this.imageData[i] = 0;

@@ -44,7 +44,7 @@ export class FrequencyDetector {
   constructor(sampleRate: number, frequencies: number[]) {
     this.sampleRate = sampleRate;
     this.filters = new Map();
-    
+
     frequencies.forEach(freq => {
       this.filters.set(freq, new GoertzelFilter(sampleRate, freq));
     });
@@ -85,7 +85,7 @@ export class FrequencyDetector {
 export function frequencyToPixel(freq: number, blackFreq: number, whiteFreq: number): number {
   if (freq <= blackFreq) return 0;
   if (freq >= whiteFreq) return 255;
-  
+
   const normalized = (freq - blackFreq) / (whiteFreq - blackFreq);
   return Math.round(normalized * 255);
 }

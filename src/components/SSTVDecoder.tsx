@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAudioProcessor } from '@/hooks/useAudioProcessor';
 import { SSTV_MODES } from '@/lib/sstv/constants';
 import { DecoderState } from '@/lib/sstv/decoder';
@@ -22,7 +22,7 @@ export default function SSTVDecoder() {
   } = useAudioProcessor(selectedMode);
 
   // Draw spectrum visualization
-  const drawSpectrum = (canvas: HTMLCanvasElement) => {
+  const drawSpectrum = useCallback((canvas: HTMLCanvasElement) => {
     const analyser = getAnalyser();
     if (!analyser) return;
 
@@ -48,7 +48,7 @@ export default function SSTVDecoder() {
 
       x += barWidth;
     }
-  };
+  }, [getAnalyser]);
 
   // Update canvas with decoded image
   useEffect(() => {
@@ -59,13 +59,13 @@ export default function SSTVDecoder() {
     if (!ctx) return;
 
     const dimensions = getDimensions();
-    
+
     // Create an offscreen canvas that matches SSTV dimensions
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = dimensions.width;
     offscreenCanvas.height = dimensions.height;
     const offscreenCtx = offscreenCanvas.getContext('2d');
-    
+
     if (!offscreenCtx) return;
 
     // Disable image smoothing for crisp pixels
@@ -101,20 +101,20 @@ export default function SSTVDecoder() {
           }
           console.log(`Line ${currentLine}: ${nonBlackPixels} non-black pixels in imageData`);
         }
-        
+
         // Create ImageData from a copy of the decoder's buffer
         const imgData = new ImageData(
           new Uint8ClampedArray(imageData),
           dimensions.width,
           dimensions.height
         );
-        
+
         // Put the complete image data on the offscreen canvas
         offscreenCtx.putImageData(imgData, 0, 0);
-        
+
         // Draw to main canvas without clearing (preserve all previous lines)
         ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
-        
+
         lastRenderedLine = currentLine;
       }
 
@@ -172,15 +172,16 @@ export default function SSTVDecoder() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Controls */}
-      <div className="bg-gray-900 rounded-lg p-6 space-y-4">
-        <div className="flex items-center gap-4 flex-wrap">
+      <div className="bg-gray-900 rounded-lg p-4 sm:p-6 space-y-4">
+        {/* Mode selector - full width on mobile */}
+        <div className="w-full">
           <select
             value={selectedMode}
             onChange={(e) => handleModeChange(e.target.value as keyof typeof SSTV_MODES)}
             disabled={state.isRecording}
-            className="bg-gray-800 text-white px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full bg-gray-800 text-white px-4 py-3 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-base"
           >
             {Object.keys(SSTV_MODES).map((mode) => (
               <option key={mode} value={mode}>
@@ -188,19 +189,22 @@ export default function SSTVDecoder() {
               </option>
             ))}
           </select>
+        </div>
 
+        {/* Action buttons - full width on mobile, flex on larger screens */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {!state.isRecording ? (
             <button
               onClick={handleStart}
               disabled={!state.isSupported}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 rounded-md transition-colors"
+              className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
             >
               Start Decoding
             </button>
           ) : (
             <button
               onClick={handleStop}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-md transition-colors"
+              className="w-full sm:flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
             >
               Stop
             </button>
@@ -209,46 +213,46 @@ export default function SSTVDecoder() {
           <button
             onClick={handleReset}
             disabled={!state.isRecording}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 rounded-md transition-colors"
+            className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
           >
             Reset
           </button>
         </div>
 
         {state.error && (
-          <div className="bg-red-900/50 border border-red-700 rounded-md p-3 text-red-200">
+          <div className="bg-red-900/50 border border-red-700 rounded-md p-3 text-red-200 text-sm sm:text-base">
             {state.error}
           </div>
         )}
 
         {!state.isSupported && (
-          <div className="bg-yellow-900/50 border border-yellow-700 rounded-md p-3 text-yellow-200">
+          <div className="bg-yellow-900/50 border border-yellow-700 rounded-md p-3 text-yellow-200 text-sm sm:text-base">
             Web Audio API is not supported in this browser
           </div>
         )}
 
         {/* Stats */}
         {state.stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <div className="text-gray-400">State</div>
-              <div className={`font-mono font-semibold ${getStateColor()}`}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
+            <div className="bg-gray-800/50 rounded-lg p-3">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1">State</div>
+              <div className={`font-mono font-semibold text-sm sm:text-base ${getStateColor()}`}>
                 {state.stats.state}
               </div>
             </div>
-            <div>
-              <div className="text-gray-400">Mode</div>
-              <div className="font-mono font-semibold">{state.stats.mode}</div>
+            <div className="bg-gray-800/50 rounded-lg p-3">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1">Mode</div>
+              <div className="font-mono font-semibold text-sm sm:text-base truncate">{state.stats.mode}</div>
             </div>
-            <div>
-              <div className="text-gray-400">Line</div>
-              <div className="font-mono font-semibold">
+            <div className="bg-gray-800/50 rounded-lg p-3">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1">Line</div>
+              <div className="font-mono font-semibold text-sm sm:text-base">
                 {state.stats.currentLine} / {state.stats.totalLines}
               </div>
             </div>
-            <div>
-              <div className="text-gray-400">Frequency</div>
-              <div className="font-mono font-semibold">{state.stats.frequency} Hz</div>
+            <div className="bg-gray-800/50 rounded-lg p-3">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1">Frequency</div>
+              <div className="font-mono font-semibold text-sm sm:text-base">{state.stats.frequency} Hz</div>
             </div>
           </div>
         )}
@@ -264,47 +268,51 @@ export default function SSTVDecoder() {
         )}
       </div>
 
-      {/* Canvas Display */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Decoded Image */}
-        <div className="bg-gray-900 rounded-lg p-4">
-          <h2 className="text-xl font-semibold mb-3">Decoded Image</h2>
+      {/* Canvas Display - prioritize decoded image on mobile */}
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
+        {/* Decoded Image - main focus */}
+        <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
+          <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Decoded Image</h2>
           <canvas
             ref={canvasRef}
             width={640}
             height={480}
-            className="w-full border border-gray-700 rounded bg-black"
+            className="w-full border border-gray-700 rounded bg-black touch-manipulation"
           />
         </div>
 
-        {/* Audio Spectrum */}
-        <div className="bg-gray-900 rounded-lg p-4">
-          <h2 className="text-xl font-semibold mb-3">Audio Spectrum</h2>
+        {/* Audio Spectrum - collapsible on mobile */}
+        <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
+          <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Audio Spectrum</h2>
           <canvas
             ref={spectrumCanvasRef}
             width={640}
             height={480}
-            className="w-full border border-gray-700 rounded bg-black"
+            className="w-full border border-gray-700 rounded bg-black touch-manipulation"
           />
         </div>
       </div>
 
-      {/* Info */}
-      <div className="bg-gray-900 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-3">How to Use</h2>
-        <ol className="list-decimal list-inside space-y-2 text-gray-300">
-          <li>Select an SSTV mode (Robot36, Martin M1, or Scottie S1)</li>
-          <li>Click &quot;Start Decoding&quot; to begin capturing audio from your microphone</li>
-          <li>Play an SSTV signal (you can use a signal generator or recording)</li>
-          <li>Watch as the image is decoded in real-time on the canvas</li>
-          <li>Click &quot;Reset&quot; to clear the image and start over</li>
-          <li>Click &quot;Stop&quot; when finished</li>
-        </ol>
-        <p className="mt-4 text-sm text-gray-400">
-          Note: For best results, ensure your audio source is clear and at an appropriate volume level.
-          The decoder will automatically detect sync pulses and begin decoding.
-        </p>
-      </div>
+      {/* Info - collapsible on mobile */}
+      <details className="bg-gray-900 rounded-lg" open>
+        <summary className="cursor-pointer p-4 sm:p-6 font-semibold text-lg sm:text-xl hover:bg-gray-800/50 rounded-lg transition-colors select-none">
+          How to Use
+        </summary>
+        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+          <ol className="list-decimal list-inside space-y-2 text-sm sm:text-base text-gray-300">
+            <li>Select an SSTV mode (Robot36, Martin M1, or Scottie S1)</li>
+            <li>Click &quot;Start Decoding&quot; to begin capturing audio from your microphone</li>
+            <li>Play an SSTV signal (you can use a signal generator or recording)</li>
+            <li>Watch as the image is decoded in real-time on the canvas</li>
+            <li>Click &quot;Reset&quot; to clear the image and start over</li>
+            <li>Click &quot;Stop&quot; when finished</li>
+          </ol>
+          <p className="mt-4 text-xs sm:text-sm text-gray-400">
+            Note: For best results, ensure your audio source is clear and at an appropriate volume level.
+            The decoder will automatically detect sync pulses and begin decoding.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
