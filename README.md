@@ -6,7 +6,7 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 - **Real-time Audio Processing**: Captures microphone input using Web Audio API (44.1 kHz)
 - **SSTV Decoding**: Robot36 Color mode (320x240 resolution, interlaced YUV)
-- **Professional DSP Chain**: 
+- **Professional DSP Chain**:
   - FM demodulation with complex baseband conversion
   - Kaiser-windowed FIR lowpass filtering
   - Schmitt trigger sync detection

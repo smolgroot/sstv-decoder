@@ -35,19 +35,19 @@ export class SyncDetector {
   private syncPulseTrigger: SchmittTrigger;
   private baseBandOscillator: Phasor;
   private syncPulseValueDelay: Delay;
-  
+
   private syncPulseCounter: number = 0;
   private centerFrequency: number;
   private scanLineBandwidth: number;
   private syncPulseFrequencyValue: number;
   private syncPulseFrequencyTolerance: number;
-  
+
   private syncPulse5msMinSamples: number;
   private syncPulse5msMaxSamples: number;
   private syncPulse9msMaxSamples: number;
   private syncPulse20msMaxSamples: number;
   private syncPulseFilterDelay: number;
-  
+
   // Debug counters
   private debugSampleCount: number = 0;
   private debugLastLogTime: number = 0;
@@ -66,13 +66,13 @@ export class SyncDetector {
     const syncPulse5msSeconds = 0.005;
     const syncPulse9msSeconds = 0.009;
     const syncPulse20msSeconds = 0.020;
-    
+
     // Min/max bounds for pulse width detection
     const syncPulse5msMinSeconds = syncPulse5msSeconds / 2;
     const syncPulse5msMaxSeconds = (syncPulse5msSeconds + syncPulse9msSeconds) / 2;
     const syncPulse9msMaxSeconds = (syncPulse9msSeconds + syncPulse20msSeconds) / 2;
     const syncPulse20msMaxSeconds = syncPulse20msSeconds + syncPulse5msSeconds;
-    
+
     this.syncPulse5msMinSamples = Math.round(syncPulse5msMinSeconds * sampleRate);
     this.syncPulse5msMaxSamples = Math.round(syncPulse5msMaxSeconds * sampleRate);
     this.syncPulse9msMaxSamples = Math.round(syncPulse9msMaxSeconds * sampleRate);
@@ -104,9 +104,9 @@ export class SyncDetector {
     const syncLowFrequency = (SyncDetector.SYNC_PULSE_FREQ + syncHighFrequency) / 2;
     const syncLowValue = this.normalizeFrequency(syncLowFrequency);
     const syncHighValue = this.normalizeFrequency(syncHighFrequency);
-    
+
     this.syncPulseTrigger = new SchmittTrigger(syncLowValue, syncHighValue);
-    
+
     // Log configuration for debugging
     console.log(`🔧 SyncDetector initialized:`);
     console.log(`   Center freq: ${this.centerFrequency}Hz, Bandwidth: ${this.scanLineBandwidth}Hz`);
@@ -131,9 +131,9 @@ export class SyncDetector {
     let syncPulseWidth = SyncPulseWidth.None;
     let syncPulseOffset = 0;
     let frequencyOffset = 0;
-    
+
     this.debugSampleCount += samples.length;
-    
+
     // Track demodulated value statistics
     let minDemod = Infinity;
     let maxDemod = -Infinity;
@@ -142,20 +142,21 @@ export class SyncDetector {
     for (let i = 0; i < samples.length; i++) {
       // Convert to complex baseband (shift center frequency to 0)
       let baseBand = new Complex(samples[i], 0).mul(this.baseBandOscillator.rotate());
-      
+
       // Apply lowpass filter to baseband signal
       baseBand = this.baseBandLowPass.push(baseBand);
-      
+
       // FM demodulation
       const frequencyValue = this.frequencyModulation.demod(baseBand);
-      
-      // Filter and delay for sync detection
+
+      // Filter for sync detection (matches Robot36 implementation)
       const syncPulseValue = this.syncPulseFilter.avg(frequencyValue);
       const syncPulseDelayedValue = this.syncPulseValueDelay.push(syncPulseValue);
       
-      // Store demodulated value for later processing
+      // Store UNcompensated value for line decoder
+      // Line decoder expects normalized frequency values (±1.0 range) to convert to pixel levels
       demodulated[i] = frequencyValue;
-      
+
       // Track demodulated value statistics
       minDemod = Math.min(minDemod, syncPulseValue);
       maxDemod = Math.max(maxDemod, syncPulseValue);
@@ -178,8 +179,8 @@ export class SyncDetector {
         // Invalid sync pulse - log why
         if (this.syncPulseCounter > 0) {
           const now = Date.now();
-          if (now - this.debugLastLogTime > 5000) {
-            const reason = 
+          if (now - this.debugLastLogTime > 1000) {  // Log every 1 second instead of 5
+            const reason =
               this.syncPulseCounter < this.syncPulse5msMinSamples ? 'too short' :
               this.syncPulseCounter > this.syncPulse20msMaxSamples ? 'too long' :
               'freq mismatch';
@@ -198,7 +199,7 @@ export class SyncDetector {
         } else {
           syncPulseWidth = SyncPulseWidth.TwentyMilliSeconds;
         }
-        
+
         syncPulseOffset = i - this.syncPulseFilterDelay;
         frequencyOffset = syncPulseDelayedValue - this.syncPulseFrequencyValue;
         syncPulseDetected = true;
@@ -207,14 +208,27 @@ export class SyncDetector {
         this.debugMaxCounter = 0;
       }
     }
-    
+
     // Periodic debug logging
     const now = Date.now();
     if (now - this.debugLastLogTime > 3000 && !syncPulseDetected) {
-      const avgDemod = sumDemod / samples.length;
+      // Track COMPENSATED values (raw after compensation), not filtered EMA values
+      let minCompensated = Infinity;
+      let maxCompensated = -Infinity;
+      let sumCompensated = 0;
+      for (let i = 0; i < demodulated.length; i++) {
+        minCompensated = Math.min(minCompensated, demodulated[i]);
+        maxCompensated = Math.max(maxCompensated, demodulated[i]);
+        sumCompensated += demodulated[i];
+      }
+      const avgCompensated = sumCompensated / demodulated.length;
+      const avgFiltered = sumDemod / samples.length;
+      
       console.log(`🔍 SyncDetector: ${this.debugSampleCount} samples, maxCounter=${this.debugMaxCounter}`);
-      console.log(`   Demod values: min=${minDemod.toFixed(3)}, max=${maxDemod.toFixed(3)}, avg=${avgDemod.toFixed(3)}`);
+      console.log(`   RAW compensated: min=${minCompensated.toFixed(3)}, max=${maxCompensated.toFixed(3)}, avg=${avgCompensated.toFixed(3)}`);
+      console.log(`   Filtered (EMA): min=${minDemod.toFixed(3)}, max=${maxDemod.toFixed(3)}, avg=${avgFiltered.toFixed(3)}`);
       console.log(`   Target sync: ${this.syncPulseFrequencyValue.toFixed(3)} ± ${this.syncPulseFrequencyTolerance.toFixed(3)}`);
+      console.log(`   Schmitt thresholds: low=-1.563, high=-1.375 (trigger on sync pulse)`);
       this.debugLastLogTime = now;
       this.debugMaxCounter = 0;
     }
