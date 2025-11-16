@@ -22,16 +22,16 @@ export const SSTV_MODES = {
     visCode: 8,
     width: 320,
     height: 240,
-    scanTime: 150, // Total: sync(9) + porch(3) + Y(88) + sep(4.5) + RY(44) + sep(1.5) + BY(44) = 194ms
-                   // Spec says 150ms, but actual is ~194ms. Using spec value for line sync.
+    // Actual line: sync(9) + syncPorch(3) + Y(88) + separator(4.5) + porch(1.5) + chrominance(44) = 150ms
+    scanTime: 150,
     syncPulse: 9,
     syncPorch: 3,
     porchFreq: 1500,
-    separatorPulse: 4.5, // Default
-    separatorPulses: [4.5, 1.5], // After Y: 4.5ms, After RY: 1.5ms
-    colorScanTime: 88, // Default (for Y channel)
-    colorScanTimes: [88, 44, 44], // Y=88ms (full resolution), R-Y=44ms, B-Y=44ms
-    colorOrder: ['G', 'R', 'B'], // Y mapped to G, R-Y to R, B-Y to B (approximation)
+    separatorPulse: 4.5,
+    separatorPulses: [4.5], // Only one separator after Y
+    colorScanTime: 88,
+    colorScanTimes: [88, 44], // Y=88ms, then ONE chrominance channel=44ms (alternates R-Y/B-Y)
+    colorOrder: ['G', 'R', 'B'], // Not used for Robot36 (it's interlaced)
   },
 } as const;
 

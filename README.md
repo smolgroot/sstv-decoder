@@ -1,24 +1,28 @@
 # SSTV Decoder Web Application
 
-A simple web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Similar to the Robot36 Android app functionality.
+A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
 
 ## Features
 
-- **Real-time Audio Processing**: Captures microphone input using Web Audio API
-- **SSTV Decoding**: Robot36 mode (320x240 resolution)
-- **Live Image Display**: Progressive image rendering on HTML canvas
-- **Save Image**: Export decoded images as PNG files with timestamped filenames
-- **Frequency Analysis**: Uses Goertzel algorithm for accurate frequency detection
-- **Mobile-First Design**: Fully responsive UI optimized for mobile devices
-- **Digital Signal Processing**: Includes low-pass filtering for signal smoothing
+- **Real-time Audio Processing**: Captures microphone input using Web Audio API (44.1 kHz)
+- **SSTV Decoding**: Robot36 Color mode (320x240 resolution, interlaced YUV)
+- **Professional DSP Chain**: 
+  - FM demodulation with complex baseband conversion
+  - Kaiser-windowed FIR lowpass filtering
+  - Schmitt trigger sync detection
+  - Bidirectional exponential moving average filtering
+- **Sync Detection**: Automatic detection of 9ms sync pulses at 1200 Hz
+- **Live Image Display**: Progressive interlaced image rendering
+- **Save Image**: Export decoded images as PNG files
+- **Mobile-Responsive**: Optimized for both desktop and mobile devices
 
 ## Technology Stack
 
-- **Next.js 14+**: React framework with App Router
+- **Next.js 15**: React framework with App Router
 - **TypeScript**: Type-safe development
+- **Web Audio API**: Real-time audio capture and processing (ScriptProcessorNode)
+- **Canvas API**: Progressive image rendering
 - **Tailwind CSS**: Utility-first styling
-- **Web Audio API**: Real-time audio capture and processing
-- **Canvas API**: Image rendering
 
 ## Getting Started
 
@@ -68,22 +72,41 @@ npm start
 
 ## Technical Details
 
-### Audio Processing
+### Signal Processing Chain
 
-- Sample Rate: 44.1 kHz
-- Frequency Detection: Goertzel algorithm with 60 frequency bins
-- Frequency Range: 1500 Hz (black) to 2300 Hz (white)
-- Sync Frequency: 1200 Hz
-- Low-pass Filter: Alpha = 0.2 for signal smoothing
+1. **Baseband Conversion**: Complex multiplication at center frequency (1900 Hz)
+2. **Baseband Lowpass Filter**: Kaiser-windowed FIR filter (2ms length, 900 Hz cutoff)
+3. **FM Demodulation**: Phase difference detection with scale factor (sampleRate / (bandwidth × π))
+4. **Sync Detection**: Schmitt trigger detecting frequency drops to 1200 Hz
+5. **Line Decoding**: Bidirectional exponential moving average filtering for horizontal resolution
 
-### Robot36 SSTV Mode
+### Audio Parameters
 
-- Resolution: 320x240 pixels
-- Color Format: YUV (Y=88ms, R-Y=44ms, B-Y=44ms)
-- Scan Time: 150ms per line
-- Sync Pulse: 9ms at 1200 Hz
-- Sync Porch: 3ms at 1500 Hz
-- Separators: 4.5ms and 1.5ms between color channels
+- **Sample Rate**: 44.1 kHz
+- **Center Frequency**: 1900 Hz (midpoint of 1000-2800 Hz range)
+- **Bandwidth**: 800 Hz (white-black range: 2300-1500 Hz)
+- **Sync Frequency**: 1200 Hz (normalized to -1.750)
+- **Schmitt Trigger**: Low threshold = -1.563 (1275 Hz), High threshold = -1.375 (1350 Hz)
+
+### Robot36 Color Mode Specifications
+
+- **Resolution**: 320×240 pixels
+- **Color Format**: Interlaced YUV (even lines: Y + B-Y, odd lines: Y + R-Y)
+- **Line Duration**: ~150ms per scan line
+- **Sync Pulse**: 9ms at 1200 Hz
+- **Sync Porch**: 3ms at 1500 Hz
+- **Luminance (Y)**: 88ms
+- **Separator**: 4.5ms
+- **Porch**: 1.5ms
+- **Chrominance (R-Y or B-Y)**: 44ms
+- **Total Lines**: 240 (120 even + 120 odd, interlaced)
+
+### Sync Detection
+
+- **9ms Pulses**: Scan line sync (309-639 samples at 44.1 kHz)
+- **5ms Pulses**: VIS code/calibration headers (110-309 samples, ignored)
+- **20ms Pulses**: Frame sync (639-1103 samples)
+- **Frequency Tolerance**: ±0.125 normalized units (~50 Hz at 1900 Hz center)
 
 ### Image Export
 
@@ -97,18 +120,21 @@ npm start
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # Root layout
-│   ├── page.tsx            # Home page
-│   └── globals.css         # Global styles
+│   ├── layout.tsx              # Root layout with metadata
+│   ├── page.tsx                # Home page
+│   └── globals.css             # Global Tailwind styles
 ├── components/
-│   └── SSTVDecoder.tsx     # Main decoder component
+│   └── SSTVDecoder.tsx         # Main decoder UI component
 ├── hooks/
-│   └── useAudioProcessor.ts # Audio processing hook
+│   └── useAudioProcessor.ts    # Web Audio API integration
 └── lib/
     └── sstv/
-        ├── constants.ts    # SSTV mode specifications
-        ├── decoder.ts      # Main decoder logic
-        └── dsp.ts          # Digital signal processing utilities
+        ├── constants.ts             # SSTV mode timing constants
+        ├── decoder.ts               # Main decoder with sync detection
+        ├── sync-detector.ts         # Sync pulse detection logic
+        ├── robot36-line-decoder.ts  # Robot36 interlaced YUV decoder
+        ├── fm-demodulator.ts        # DSP primitives (FM demod, filters)
+        └── dsp.ts                   # Legacy utilities (deprecated)
 ```
 
 ## Browser Compatibility
@@ -118,17 +144,38 @@ src/
 - Safari: Full support (iOS 14.5+)
 - Requires HTTPS for microphone access (except on localhost)
 
-## Known Limitations
+## Implementation Notes
 
-- No automatic sync detection - starts decoding immediately
-- Works best with clean, strong SSTV signals
-- Background noise may affect decoding quality
+This implementation closely follows the [Robot36 Android app](https://github.com/xdsopl/robot36) by Ahmet Inan (xdsopl), translating the Java implementation to TypeScript while maintaining the same DSP algorithms:
+
+- **FM Demodulation**: Complex baseband conversion with phase difference calculation
+- **Lowpass Filtering**: Kaiser-windowed FIR filter matching Java's `ComplexConvolution`
+- **Sync Detection**: Schmitt trigger logic from `Robot_36_Color.java`
+- **Line Decoding**: Bidirectional exponential moving average filter with proper cutoff formula
+- **Color Conversion**: ITU-R BT.601 YUV to RGB transformation with interlaced chrominance
+
+### Known Issues
+
+- Uses deprecated `ScriptProcessorNode` (should migrate to AudioWorklet)
+- Occasional false sync detections from noise/interference
+- Stack overflow on very long lines (>6 seconds) - indicates lost sync
+- Best results with clean, strong signals from radio or audio playback
+
+## Future Improvements
+
+- [ ] Migrate to AudioWorkletProcessor for better performance
+- [ ] Add support for more SSTV modes (Martin M1, Scottie S1, etc.)
+- [ ] Implement VIS code detection for automatic mode selection
+- [ ] Add signal strength indicator
+- [ ] Improve sync detection robustness
+- [ ] Add audio file upload option (decode from WAV/MP3)
 
 ## License
 
-[Your License Here]
+This project is based on [Robot36](https://github.com/xdsopl/robot36) by Ahmet Inan, which is licensed under the AGPLv3.
 
 ## Acknowledgments
 
-- Inspired by the Robot36 Android application
-- SSTV protocol specifications from various amateur radio sources
+- **Ahmet Inan (xdsopl)**: Original Robot36 Android app and DSP algorithms
+- **Amateur Radio SSTV Community**: Protocol specifications and documentation
+- The Java implementation at `./robot36/` is included as reference for algorithm verification
