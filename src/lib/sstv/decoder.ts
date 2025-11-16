@@ -14,6 +14,7 @@ export interface DecoderStats {
   totalLines: number;
   progress: number;
   frequency: number;
+  signalStrength: number; // 0-100 percentage
 }
 
 /**
@@ -44,9 +45,12 @@ export class SSTVDecoder {
   // Frequency calibration
   private frequencyOffset: number = 0;
 
+  // Signal strength tracking
+  private signalStrength: number = 0;
+
   constructor(sampleRate: number = SAMPLE_RATE) {
     this.sampleRate = sampleRate;
-    
+
     // Robot36 only
     this.mode = SSTV_MODES['ROBOT36'];
     this.imageData = new Uint8ClampedArray(320 * 240 * 4);
@@ -78,6 +82,13 @@ export class SSTVDecoder {
    * Process audio samples
    */
   processSamples(samples: Float32Array): void {
+    // Calculate signal strength (RMS amplitude as percentage) - ALWAYS, even when not decoding
+    const rms = Math.sqrt(samples.reduce((sum, val) => sum + val * val, 0) / samples.length);
+    // Convert RMS to percentage with more sensitive scaling for typical SSTV signals
+    // SSTV signals are often quieter, so scale more aggressively
+    const currentStrength = Math.min(100, rms * 500); // More sensitive scaling
+    this.signalStrength = this.signalStrength * 0.8 + currentStrength * 0.2;
+
     if (this.state !== DecoderState.DECODING_IMAGE) {
       return;
     }
@@ -214,6 +225,7 @@ export class SSTVDecoder {
       totalLines: 240,
       progress: (this.currentLine / 240) * 100,
       frequency: Math.round(1900 + this.frequencyOffset), // Center frequency + offset
+      signalStrength: Math.round(this.signalStrength),
     };
   }
 

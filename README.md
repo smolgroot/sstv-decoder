@@ -2,6 +2,10 @@
 
 A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
 
+🚀 **[Try the Live Demo](https://sstv-decoder.vercel.app)**
+
+![SSTV Decoder Screenshot](doc/screenshot.png)
+
 ## Features
 
 - **Real-time Audio Processing**: Captures microphone input using Web Audio API (auto-detects 44.1 kHz or 48 kHz)
@@ -188,11 +192,6 @@ The app uses a **dual-strategy approach** for maximum compatibility:
    - Required for Firefox compatibility
    - All DSP calculations scale accordingly
 
-### Tested Devices
-
-- ✅ Desktop: Windows 10/11, macOS 12+, Linux (Ubuntu 20.04+)
-- ✅ Mobile: iPhone 12-17 Pro (iOS 14.5-18), Samsung Galaxy S21-S24, Google Pixel 6-9
-- ✅ Tablets: iPad Pro (2020+), Samsung Galaxy Tab S8+
 
 ## Implementation Notes
 

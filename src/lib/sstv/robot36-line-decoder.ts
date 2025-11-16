@@ -157,7 +157,7 @@ export class Robot36LineDecoder {
     // First pass: extract raw Y and chroma values (keep as floats for better filtering)
     const rawY = new Float32Array(this.horizontalPixels);
     const rawChroma = new Float32Array(this.horizontalPixels);
-    
+
     for (let i = 0; i < this.horizontalPixels; i++) {
       const luminancePos = this.luminanceBeginSamples + Math.floor((i * this.luminanceSamples) / this.horizontalPixels);
       const chrominancePos = this.chrominanceBeginSamples + Math.floor((i * this.chrominanceSamples) / this.horizontalPixels);
@@ -165,7 +165,7 @@ export class Robot36LineDecoder {
       // Clamp extreme values before conversion (normalized ±3 range)
       const yRaw = Math.max(-3, Math.min(3, scratchBuffer[luminancePos]));
       const chromaRaw = Math.max(-3, Math.min(3, scratchBuffer[chrominancePos]));
-      
+
       rawY[i] = yRaw * 255;
       rawChroma[i] = chromaRaw * 255;
     }
@@ -179,7 +179,7 @@ export class Robot36LineDecoder {
       const i3 = i;
       const i4 = Math.min(this.horizontalPixels - 1, i + 1);
       const i5 = Math.min(this.horizontalPixels - 1, i + 2);
-      
+
       const values = [rawChroma[i1], rawChroma[i2], rawChroma[i3], rawChroma[i4], rawChroma[i5]];
       values.sort((a, b) => a - b);
       filteredChroma[i] = values[2]; // Median of 5 values

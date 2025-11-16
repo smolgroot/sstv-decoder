@@ -291,7 +291,47 @@ export default function SSTVDecoder() {
 
         {/* Audio Spectrum - collapsible on mobile */}
         <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
-          <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Audio Spectrum</h2>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h2 className="text-lg sm:text-xl font-semibold">Audio Spectrum</h2>
+            
+            {/* Signal Strength Indicator */}
+            {state.stats && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm text-gray-400">Signal</span>
+                <div className="flex items-center gap-1">
+                  {/* Signal strength bars */}
+                  {[0, 1, 2, 3, 4].map((bar) => {
+                    const threshold = bar * 20;
+                    const isActive = state.stats!.signalStrength > threshold;
+                    const barHeight = 8 + bar * 3;
+                    let barColor = 'bg-gray-700';
+                    
+                    if (isActive) {
+                      if (state.stats!.signalStrength < 30) {
+                        barColor = 'bg-red-500';
+                      } else if (state.stats!.signalStrength < 60) {
+                        barColor = 'bg-yellow-500';
+                      } else {
+                        barColor = 'bg-green-500';
+                      }
+                    }
+                    
+                    return (
+                      <div
+                        key={bar}
+                        className={`w-1.5 sm:w-2 rounded-sm transition-colors ${barColor}`}
+                        style={{ height: `${barHeight}px` }}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-xs sm:text-sm font-mono text-gray-300 min-w-[3ch]">
+                  {state.stats.signalStrength}%
+                </span>
+              </div>
+            )}
+          </div>
+          
           <canvas
             ref={spectrumCanvasRef}
             width={640}
