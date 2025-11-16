@@ -152,7 +152,7 @@ export class SyncDetector {
       // Filter for sync detection (matches Robot36 implementation)
       const syncPulseValue = this.syncPulseFilter.avg(frequencyValue);
       const syncPulseDelayedValue = this.syncPulseValueDelay.push(syncPulseValue);
-      
+
       // Store UNcompensated value for line decoder
       // Line decoder expects normalized frequency values (±1.0 range) to convert to pixel levels
       demodulated[i] = frequencyValue;
@@ -223,7 +223,7 @@ export class SyncDetector {
       }
       const avgCompensated = sumCompensated / demodulated.length;
       const avgFiltered = sumDemod / samples.length;
-      
+
       console.log(`🔍 SyncDetector: ${this.debugSampleCount} samples, maxCounter=${this.debugMaxCounter}`);
       console.log(`   RAW compensated: min=${minCompensated.toFixed(3)}, max=${maxCompensated.toFixed(3)}, avg=${avgCompensated.toFixed(3)}`);
       console.log(`   Filtered (EMA): min=${minDemod.toFixed(3)}, max=${maxDemod.toFixed(3)}, avg=${avgFiltered.toFixed(3)}`);

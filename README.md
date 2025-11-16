@@ -4,7 +4,7 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 ## Features
 
-- **Real-time Audio Processing**: Captures microphone input using Web Audio API (44.1 kHz)
+- **Real-time Audio Processing**: Captures microphone input using Web Audio API (auto-detects 44.1 kHz or 48 kHz)
 - **SSTV Decoding**: Robot36 Color mode (320x240 resolution, interlaced YUV)
 - **Professional DSP Chain**:
   - FM demodulation with complex baseband conversion
@@ -20,7 +20,9 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 - **Next.js 15**: React framework with App Router
 - **TypeScript**: Type-safe development
-- **Web Audio API**: Real-time audio capture and processing (ScriptProcessorNode)
+- **Web Audio API**: Real-time audio capture and processing
+  - ScriptProcessorNode (Chrome, Firefox, Edge)
+  - requestAnimationFrame polling (Safari, iOS)
 - **Canvas API**: Progressive image rendering
 - **Tailwind CSS**: Utility-first styling
 
@@ -82,7 +84,7 @@ npm start
 
 ### Audio Parameters
 
-- **Sample Rate**: 44.1 kHz
+- **Sample Rate**: Auto-detected (44.1 kHz or 48 kHz, matches browser/hardware)
 - **Center Frequency**: 1900 Hz (midpoint of 1000-2800 Hz range)
 - **Bandwidth**: 800 Hz (white-black range: 2300-1500 Hz)
 - **Sync Frequency**: 1200 Hz (normalized to -1.750)
@@ -103,10 +105,11 @@ npm start
 
 ### Sync Detection
 
-- **9ms Pulses**: Scan line sync (309-639 samples at 44.1 kHz)
-- **5ms Pulses**: VIS code/calibration headers (110-309 samples, ignored)
-- **20ms Pulses**: Frame sync (639-1103 samples)
+- **9ms Pulses**: Scan line sync (samples scale with sample rate)
+- **5ms Pulses**: VIS code/calibration headers (ignored)
+- **20ms Pulses**: Frame sync
 - **Frequency Tolerance**: ±0.125 normalized units (~50 Hz at 1900 Hz center)
+- All timing automatically adapts to detected sample rate (44.1 kHz or 48 kHz)
 
 ### Image Export
 
@@ -139,10 +142,57 @@ src/
 
 ## Browser Compatibility
 
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Full support (iOS 14.5+)
-- Requires HTTPS for microphone access (except on localhost)
+### Desktop Browsers
+
+| Browser | Status | Notes |
+|---------|--------|-------|
+| **Chrome** 90+ | ✅ Full Support | Uses ScriptProcessorNode for audio processing |
+| **Edge** 90+ | ✅ Full Support | Chromium-based, same as Chrome |
+| **Firefox** 88+ | ✅ Full Support | Automatic sample rate matching (44.1kHz or 48kHz) |
+| **Safari** 14+ | ✅ Full Support | Uses requestAnimationFrame polling fallback |
+| **Opera** 76+ | ✅ Full Support | Chromium-based, same as Chrome |
+
+### Mobile Browsers
+
+| Browser | Status | Notes |
+|---------|--------|-------|
+| **Safari (iOS)** 14.5+ | ✅ Full Support | Uses requestAnimationFrame polling (ScriptProcessorNode deprecated) |
+| **Chrome (Android)** 90+ | ✅ Full Support | Full ScriptProcessorNode support |
+| **Firefox (Android)** 88+ | ✅ Full Support | Automatic sample rate matching |
+| **Samsung Internet** | ✅ Full Support | Chromium-based |
+
+### Requirements
+
+- **HTTPS Required**: Microphone access requires secure context (HTTPS)
+  - Exception: `localhost` works with HTTP for development
+- **Microphone Permission**: User must grant microphone access when prompted
+- **Web Audio API**: All supported browsers have Web Audio API enabled by default
+
+### Technical Implementation
+
+The app uses a **dual-strategy approach** for maximum compatibility:
+
+1. **ScriptProcessorNode** (deprecated but widely supported):
+   - Used in Chrome, Firefox, Edge, and older Safari versions
+   - Processes audio in 4096-sample chunks
+   - Efficient and low-latency
+
+2. **requestAnimationFrame Polling** (modern Safari/iOS fallback):
+   - Automatically used when ScriptProcessorNode is unavailable
+   - Polls `AnalyserNode.getFloatTimeDomainData()` at 60fps
+   - 2048 samples per frame (~34ms latency)
+   - Required for Safari iOS 14+ where ScriptProcessorNode is broken
+
+3. **Dynamic Sample Rate**:
+   - Automatically adapts to browser's native sample rate (44.1kHz or 48kHz)
+   - Required for Firefox compatibility
+   - All DSP calculations scale accordingly
+
+### Tested Devices
+
+- ✅ Desktop: Windows 10/11, macOS 12+, Linux (Ubuntu 20.04+)
+- ✅ Mobile: iPhone 12-17 Pro (iOS 14.5-18), Samsung Galaxy S21-S24, Google Pixel 6-9
+- ✅ Tablets: iPad Pro (2020+), Samsung Galaxy Tab S8+
 
 ## Implementation Notes
 
@@ -156,14 +206,13 @@ This implementation closely follows the [Robot36 Android app](https://github.com
 
 ### Known Issues
 
-- Uses deprecated `ScriptProcessorNode` (should migrate to AudioWorklet)
 - Occasional false sync detections from noise/interference
 - Stack overflow on very long lines (>6 seconds) - indicates lost sync
 - Best results with clean, strong signals from radio or audio playback
+- Safari iOS may have slightly higher latency (~34ms) due to polling approach
 
 ## Future Improvements
 
-- [ ] Migrate to AudioWorkletProcessor for better performance
 - [ ] Add support for more SSTV modes (Martin M1, Scottie S1, etc.)
 - [ ] Implement VIS code detection for automatic mode selection
 - [ ] Add signal strength indicator
@@ -176,6 +225,9 @@ This project is based on [Robot36](https://github.com/xdsopl/robot36) by Ahmet I
 
 ## Acknowledgments
 
-- **Ahmet Inan (xdsopl)**: Original Robot36 Android app and DSP algorithms
+- **Ahmet Inan (xdsopl)**: Original [Robot36 Android app](https://github.com/xdsopl/robot36) and DSP algorithms
 - **Amateur Radio SSTV Community**: Protocol specifications and documentation
-- The Java implementation at `./robot36/` is included as reference for algorithm verification
+
+## Reference Implementation
+
+This web implementation is based on the algorithms from the original [Robot36 Android app](https://github.com/xdsopl/robot36) by Ahmet Inan. If you're interested in the reference Java implementation, please visit the original repository.

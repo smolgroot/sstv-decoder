@@ -25,6 +25,7 @@ export class SSTVDecoder {
   private state: DecoderState = DecoderState.IDLE;
   private imageData: Uint8ClampedArray;
   private currentLine: number = 0;
+  private sampleRate: number;
 
   // Audio buffer (7 seconds max for line + safety margin)
   private audioBuffer: Float32Array;
@@ -43,7 +44,9 @@ export class SSTVDecoder {
   // Frequency calibration
   private frequencyOffset: number = 0;
 
-  constructor() {
+  constructor(sampleRate: number = SAMPLE_RATE) {
+    this.sampleRate = sampleRate;
+    
     // Robot36 only
     this.mode = SSTV_MODES['ROBOT36'];
     this.imageData = new Uint8ClampedArray(320 * 240 * 4);
@@ -57,13 +60,13 @@ export class SSTVDecoder {
     }
 
     // Buffer size: 7 seconds (max line ~150ms + safety margin)
-    this.bufferSize = Math.floor(SAMPLE_RATE * 7);
+    this.bufferSize = Math.floor(sampleRate * 7);
     this.audioBuffer = new Float32Array(this.bufferSize);
     this.demodulatedBuffer = new Float32Array(this.bufferSize);
 
     // Create sync detector and line decoder
-    this.syncDetector = new SyncDetector(SAMPLE_RATE);
-    this.lineDecoder = new Robot36LineDecoder(SAMPLE_RATE);
+    this.syncDetector = new SyncDetector(sampleRate);
+    this.lineDecoder = new Robot36LineDecoder(sampleRate);
   }
 
   // Sample counter for periodic logging
@@ -108,7 +111,7 @@ export class SSTVDecoder {
 
       // Only process if this is a new sync pulse (9ms or 20ms)
       if ((result.width === SyncPulseWidth.NineMilliSeconds || result.width === SyncPulseWidth.TwentyMilliSeconds) &&
-          (this.lastSyncPos === -1 || this.distanceInBuffer(this.lastSyncPos, syncEndPos) > SAMPLE_RATE * 0.1)) {
+          (this.lastSyncPos === -1 || this.distanceInBuffer(this.lastSyncPos, syncEndPos) > this.sampleRate * 0.1)) {
 
         // Update frequency calibration
         this.frequencyOffset = result.frequencyOffset;
@@ -116,7 +119,7 @@ export class SSTVDecoder {
         // If we have a previous sync, decode the line between them
         if (this.lastSyncPos !== -1) {
           const distance = this.distanceInBuffer(this.lastSyncPos, syncEndPos);
-          console.log(`📏 Decoding line between syncs: distance=${distance} samples (${(distance/SAMPLE_RATE*1000).toFixed(1)}ms)`);
+          console.log(`📏 Decoding line between syncs: distance=${distance} samples (${(distance/this.sampleRate*1000).toFixed(1)}ms)`);
           this.decodeLine(this.lastSyncPos, syncEndPos);
         }
 
@@ -149,7 +152,7 @@ export class SSTVDecoder {
   private decodeLine(startPos: number, endPos: number): void {
     const lineLength = this.distanceInBuffer(startPos, endPos);
 
-    console.log(`🔍 decodeLine: lineLength=${lineLength} samples (${(lineLength/SAMPLE_RATE*1000).toFixed(1)}ms)`);
+    console.log(`🔍 decodeLine: lineLength=${lineLength} samples (${(lineLength/this.sampleRate*1000).toFixed(1)}ms)`);
 
     // Extract DEMODULATED line samples into contiguous buffer
     const lineSamples = new Float32Array(lineLength);

@@ -23,6 +23,8 @@ export function useAudioProcessor() {
   const decoderRef = useRef<SSTVDecoder | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Float32Array[]>([]);
 
   // Check browser support on mount
   useEffect(() => {
@@ -41,12 +43,7 @@ export function useAudioProcessor() {
     checkSupport();
   }, []);
 
-  // Initialize decoder
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      decoderRef.current = new SSTVDecoder();
-    }
-  }, []);
+  // Decoder will be initialized when we start recording and know the sample rate
 
   const startRecording = async () => {
     try {
@@ -61,20 +58,23 @@ export function useAudioProcessor() {
       }
 
       // Request microphone access
+      // Don't specify sampleRate - let the browser use the hardware's native rate
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-          sampleRate: 44100,
         },
       });
 
       streamRef.current = stream;
 
-      // Create audio context
-      const audioContext = new AudioContext({ sampleRate: 44100 });
+      // Create audio context with default sample rate to match MediaStream
+      // Firefox requires AudioContext and MediaStream to have the same sample rate
+      const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
+
+      console.log(`AudioContext created with sample rate: ${audioContext.sampleRate} Hz`);
 
       // Create audio source from microphone
       const source = audioContext.createMediaStreamSource(stream);
@@ -84,33 +84,76 @@ export function useAudioProcessor() {
       analyser.fftSize = 2048;
       analyserRef.current = analyser;
 
-      // Create script processor for audio processing
-      const bufferSize = 4096;
-      const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
-      processorNodeRef.current = processor;
+      // Connect source to analyser
+      source.connect(analyser);
 
-      processor.onaudioprocess = (event) => {
-        const inputData = event.inputBuffer.getChannelData(0);
+      // Try to use ScriptProcessorNode (deprecated but still works in some browsers)
+      // If it fails or is not available, we'll fall back to polling via requestAnimationFrame
+      let useScriptProcessor = false;
+      try {
+        if (typeof audioContext.createScriptProcessor === 'function') {
+          const bufferSize = 4096;
+          const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+          processorNodeRef.current = processor;
 
-        // Process audio with SSTV decoder
-        if (decoderRef.current) {
-          decoderRef.current.processSamples(inputData);
+          processor.onaudioprocess = (event) => {
+            const inputData = event.inputBuffer.getChannelData(0);
+
+            // Process audio with SSTV decoder
+            if (decoderRef.current) {
+              decoderRef.current.processSamples(inputData);
+
+              // Update stats
+              const stats = decoderRef.current.getStats();
+              setState(prev => ({ ...prev, stats }));
+            }
+          };
+
+          analyser.connect(processor);
+          processor.connect(audioContext.destination);
+          useScriptProcessor = true;
+          console.log('Using ScriptProcessorNode for audio processing');
+        }
+      } catch (e) {
+        console.warn('ScriptProcessorNode not available, using polling fallback');
+      }
+
+      // Fallback: Use requestAnimationFrame polling for Safari/iOS
+      if (!useScriptProcessor) {
+        // Create a silent destination to keep the graph active
+        const silentGain = audioContext.createGain();
+        silentGain.gain.value = 0.001; // Very quiet so we can monitor but not hear it
+        analyser.connect(silentGain);
+        silentGain.connect(audioContext.destination);
+
+        // Poll analyser for time domain data
+        const pollAudio = () => {
+          if (!analyserRef.current || !decoderRef.current) {
+            return;
+          }
+
+          const bufferLength = analyser.fftSize;
+          const dataArray = new Float32Array(bufferLength);
+          analyser.getFloatTimeDomainData(dataArray);
+
+          // Process audio with SSTV decoder
+          decoderRef.current.processSamples(dataArray);
 
           // Update stats
           const stats = decoderRef.current.getStats();
           setState(prev => ({ ...prev, stats }));
-        }
-      };
 
-      // Connect audio nodes
-      source.connect(analyser);
-      analyser.connect(processor);
-      processor.connect(audioContext.destination);
+          // Continue polling
+          animationFrameRef.current = requestAnimationFrame(pollAudio);
+        };
 
-      // Start decoder
-      if (decoderRef.current) {
-        decoderRef.current.start();
+        console.log('Using requestAnimationFrame polling for audio processing (Safari-compatible)');
+        animationFrameRef.current = requestAnimationFrame(pollAudio);
       }
+
+      // Initialize and start decoder with the actual sample rate
+      decoderRef.current = new SSTVDecoder(audioContext.sampleRate);
+      decoderRef.current.start();
 
       setState(prev => ({
         ...prev,

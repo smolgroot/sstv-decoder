@@ -154,43 +154,76 @@ export class Robot36LineDecoder {
     // Decode pixels
     const pixels = new Uint8ClampedArray(this.horizontalPixels * 4 * 2); // Allocate for 2 lines
 
+    // First pass: extract raw Y and chroma values (keep as floats for better filtering)
+    const rawY = new Float32Array(this.horizontalPixels);
+    const rawChroma = new Float32Array(this.horizontalPixels);
+    
     for (let i = 0; i < this.horizontalPixels; i++) {
       const luminancePos = this.luminanceBeginSamples + Math.floor((i * this.luminanceSamples) / this.horizontalPixels);
       const chrominancePos = this.chrominanceBeginSamples + Math.floor((i * this.chrominanceSamples) / this.horizontalPixels);
 
-      const y = Math.round(scratchBuffer[luminancePos] * 255);
-      // Chroma uses 1500Hz as center (128), not black (0)
-      // Map 0.0→1.0 range to 0→255, then it represents deviation from center
-      const chroma = Math.round(scratchBuffer[chrominancePos] * 255);
+      // Clamp extreme values before conversion (normalized ±3 range)
+      const yRaw = Math.max(-3, Math.min(3, scratchBuffer[luminancePos]));
+      const chromaRaw = Math.max(-3, Math.min(3, scratchBuffer[chrominancePos]));
+      
+      rawY[i] = yRaw * 255;
+      rawChroma[i] = chromaRaw * 255;
+    }
+
+    // Second pass: apply 5-pixel median filter to chroma for stronger noise reduction
+    const filteredChroma = new Float32Array(this.horizontalPixels);
+    for (let i = 0; i < this.horizontalPixels; i++) {
+      // Get 5 neighboring values (or edge values if near boundaries)
+      const i1 = Math.max(0, i - 2);
+      const i2 = Math.max(0, i - 1);
+      const i3 = i;
+      const i4 = Math.min(this.horizontalPixels - 1, i + 1);
+      const i5 = Math.min(this.horizontalPixels - 1, i + 2);
+      
+      const values = [rawChroma[i1], rawChroma[i2], rawChroma[i3], rawChroma[i4], rawChroma[i5]];
+      values.sort((a, b) => a - b);
+      filteredChroma[i] = values[2]; // Median of 5 values
+    }
+
+    // Third pass: decode pixels with filtered chroma (clamp to valid 0-255 range)
+    for (let i = 0; i < this.horizontalPixels; i++) {
+      const y = Math.max(0, Math.min(255, Math.round(rawY[i])));
+      const chroma = Math.max(0, Math.min(255, Math.round(filteredChroma[i])));
 
       if (even) {
-        // Even line: Y + B-Y (store for interlacing)
+        // Even line: Y + R-Y (store for interlacing)
         this.evenLinePixels[i * 4] = y;      // Store Y
         this.evenLinePixels[i * 4 + 1] = 0;  // U placeholder
-        this.evenLinePixels[i * 4 + 2] = chroma; // Store B-Y
+        this.evenLinePixels[i * 4 + 2] = chroma; // Store R-Y
         this.evenLinePixels[i * 4 + 3] = 255;
       } else {
-        // Odd line: Y + R-Y, combine with previous even line
+        // Odd line: Y + B-Y, combine with previous even line
         const evenY = this.evenLinePixels[i * 4];
-        const evenBY = this.evenLinePixels[i * 4 + 2];
+        let evenRY = this.evenLinePixels[i * 4 + 2];
         const oddY = y;
-        const oddRY = chroma;
+        let oddBY = chroma;
+
+        // Reduce chroma saturation to suppress color noise (70% intensity)
+        const CHROMA_REDUCTION = 0.7;
+        evenRY = 128 + (evenRY - 128) * CHROMA_REDUCTION;
+        oddBY = 128 + (oddBY - 128) * CHROMA_REDUCTION;
 
         // Debug YUV values for first pixel
         if (i === 100) {
-          console.log(`🎨 Pixel ${i} YUV values: evenY=${evenY}, oddY=${oddY}, B-Y=${evenBY}, R-Y=${oddRY}`);
+          console.log(`🎨 Pixel ${i} YUV values: evenY=${evenY}, oddY=${oddY}, R-Y=${Math.round(evenRY)}, B-Y=${Math.round(oddBY)}`);
         }
 
-        // Convert even line: [Y_even, R-Y_odd, B-Y_even] → RGB
+        // Convert even line: [Y_even, R-Y_even, B-Y_odd] → RGB
         // YUV2RGB expects (Y, U=B-Y, V=R-Y) per ITU-R BT.601
-        const evenRGB = this.yuv2rgb(evenY, evenBY, oddRY);
+        const evenRGB = this.yuv2rgb(evenY, oddBY, evenRY);
         pixels[i * 4] = evenRGB.r;
         pixels[i * 4 + 1] = evenRGB.g;
         pixels[i * 4 + 2] = evenRGB.b;
         pixels[i * 4 + 3] = 255;
 
-        // Convert odd line: [Y_odd, R-Y_odd, B-Y_even] → RGB
-        const oddRGB = this.yuv2rgb(oddY, evenBY, oddRY);
+        // Convert odd line: [Y_odd, R-Y_even, B-Y_odd] → RGB
+        // YUV2RGB expects (Y, U=B-Y, V=R-Y) per ITU-R BT.601
+        const oddRGB = this.yuv2rgb(oddY, oddBY, evenRY);
         pixels[this.horizontalPixels * 4 + i * 4] = oddRGB.r;
         pixels[this.horizontalPixels * 4 + i * 4 + 1] = oddRGB.g;
         pixels[this.horizontalPixels * 4 + i * 4 + 2] = oddRGB.b;

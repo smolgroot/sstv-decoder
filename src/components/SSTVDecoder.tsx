@@ -267,10 +267,10 @@ export default function SSTVDecoder() {
 
         {/* Progress bar */}
         {state.stats && state.stats.progress > 0 && (
-          <div className="w-full bg-gray-800 rounded-full h-2">
+          <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
             <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${state.stats.progress}%` }}
+              style={{ width: `${Math.min(100, state.stats.progress)}%` }}
             />
           </div>
         )}

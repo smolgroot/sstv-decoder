@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+robot36/
+
+# IDE files
+.vscode/
+.idea/
+.github/
