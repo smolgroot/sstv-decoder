@@ -1,8 +1,51 @@
 import SSTVDecoder from "@/components/SSTVDecoder";
 
 export default function Home() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "SSTV Decoder",
+    "description": "Free web-based SSTV (Slow Scan Television) decoder supporting Robot36 mode. Decode amateur radio SSTV signals in real-time from your microphone.",
+    "url": "https://sstv-decoder.vercel.app",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Any (Web Browser)",
+    "browserRequirements": "Requires JavaScript, Web Audio API",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "creator": {
+      "@type": "Person",
+      "name": "smolgroot",
+      "url": "https://github.com/smolgroot"
+    },
+    "sourceOrganization": {
+      "@type": "Organization",
+      "name": "smolgroot",
+      "url": "https://github.com/smolgroot"
+    },
+    "screenshot": "https://sstv-decoder.vercel.app/og-image.png",
+    "featureList": [
+      "Real-time SSTV decoding",
+      "Robot36 mode support",
+      "Microphone input",
+      "Progressive image rendering",
+      "Spectrum analyzer",
+      "Signal strength meter",
+      "Image export (PNG)",
+      "Works on desktop and mobile"
+    ],
+    "keywords": "SSTV, Slow Scan Television, Robot36, Amateur Radio, Ham Radio, ISS, Signal Decoder"
+  };
+
   return (
-    <main className="min-h-screen p-4 sm:p-6 lg:p-8">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <main className="min-h-screen p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 text-[#c9d1d9]">
@@ -41,5 +84,6 @@ export default function Home() {
         <SSTVDecoder />
       </div>
     </main>
+    </>
   );
 }

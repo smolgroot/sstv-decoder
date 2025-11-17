@@ -42,7 +42,7 @@ This is a web-based SSTV (Slow Scan Television) decoder supporting Robot36 Color
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - Modern browser with Web Audio API support
 - Microphone access (for real-time decoding)
 
@@ -142,11 +142,11 @@ The decoder processes audio in a multi-stage pipeline:
 ```
 1. AUDIO INPUT
    └── Microphone → Web Audio API (44.1kHz or 48kHz)
-   
+
 2. DUAL BUFFER STORAGE
    ├── Raw audio buffer (7 seconds circular)
    └── FM demodulated buffer (7 seconds circular)
-   
+
 3. SYNC DETECTION (SyncDetector.process)
    ├── Convert to complex baseband (multiply by Phasor at -1900Hz center frequency)
    ├── FM demodulate: instantaneous_frequency = arg(sample × conj(prev)) / π
@@ -154,12 +154,12 @@ The decoder processes audio in a multi-stage pipeline:
    ├── Schmitt trigger: detect frequency drops below -1.750 threshold (1200Hz sync)
    ├── Measure pulse width duration
    └── Classify: 5ms (VIS half), 9ms (scan line), 20ms (VIS full)
-   
+
 4. LINE EXTRACTION
    ├── When 9ms sync detected, calculate distance to previous sync
    ├── Extract demodulated samples between sync boundaries
    └── Pass to Robot36LineDecoder
-   
+
 5. LINE DECODING (Robot36LineDecoder.decodeScanLine)
    ├── Parse line structure: sync → porch → Y → separator → porch → chroma
    ├── Detect even/odd line type from separator frequency
@@ -170,12 +170,12 @@ The decoder processes audio in a multi-stage pipeline:
    ├── **Odd lines**: Combine stored even Y+R-Y with odd Y+B-Y
    ├── YUV→RGB conversion (ITU-R BT.601)
    └── Output 2 RGB pixel rows (even + odd combined)
-   
+
 6. IMAGE UPDATE
    ├── Copy decoded RGB pixels to canvas imageData (Uint8ClampedArray)
    ├── Progressive rendering (updates visible immediately)
    └── Update statistics (line count, progress %, frequency offset)
-   
+
 7. VISUALIZATION
    ├── Main canvas: Decoded SSTV image (320×240 → scaled)
    ├── Spectrum canvas: Real-time frequency spectrum (FFT)

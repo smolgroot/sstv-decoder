@@ -2,34 +2,75 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SSTV Decoder - Real-time Slow Scan Television Decoder",
-  description: "Web-based SSTV (Slow Scan Television) decoder supporting Robot36 mode. Decode amateur radio SSTV signals in real-time from your microphone with professional DSP processing.",
-  keywords: ["SSTV", "Slow Scan Television", "Robot36", "Amateur Radio", "Ham Radio", "ISS", "Signal Decoder", "Web Audio"],
-  authors: [{ name: "smolgroot" }],
+  metadataBase: new URL("https://sstv-decoder.vercel.app"),
+  title: {
+    default: "SSTV Decoder - Real-time Slow Scan Television Decoder",
+    template: "%s | SSTV Decoder",
+  },
+  description: "Free web-based SSTV (Slow Scan Television) decoder supporting Robot36 mode. Decode amateur radio SSTV signals in real-time from your microphone with professional DSP processing. Works on desktop and mobile. Perfect for ham radio enthusiasts and ISS SSTV events.",
+  keywords: [
+    "SSTV", 
+    "Slow Scan Television", 
+    "Robot36", 
+    "Amateur Radio", 
+    "Ham Radio", 
+    "ISS", 
+    "ISS SSTV",
+    "Signal Decoder", 
+    "Web Audio",
+    "Radio Decoder",
+    "FM Demodulation",
+    "Digital Signal Processing",
+    "DSP",
+    "Robot 36",
+    "SSTV Software",
+    "Online SSTV Decoder",
+    "Free SSTV Decoder",
+    "Browser SSTV",
+    "Web SSTV",
+    "SSTV Online",
+    "Radio Imaging",
+    "Satellite Images",
+    "Space Station SSTV"
+  ],
+  authors: [{ name: "smolgroot", url: "https://github.com/smolgroot" }],
   creator: "smolgroot",
   publisher: "smolgroot",
+  category: "Technology",
+  classification: "Radio Communications Software",
   openGraph: {
     title: "SSTV Decoder - Real-time Slow Scan Television Decoder",
-    description: "Decode amateur radio SSTV signals in real-time from your microphone. Supports Robot36 mode with professional DSP processing.",
+    description: "Free web-based SSTV decoder for amateur radio enthusiasts. Decode Robot36 SSTV signals in real-time from your microphone. Perfect for ISS SSTV events, ham radio operations, and satellite image reception.",
     url: "https://sstv-decoder.vercel.app",
     siteName: "SSTV Decoder",
     images: [
       {
-        url: "https://sstv-decoder.vercel.app/og-image.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "SSTV Decoder Screenshot",
+        alt: "SSTV Decoder Interface - Real-time Radio Signal Decoding",
       },
     ],
     locale: "en_US",
     type: "website",
+    countryName: "United States",
+  },
+  alternates: {
+    canonical: "https://sstv-decoder.vercel.app",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SSTV Decoder - Real-time Slow Scan Television Decoder",
-    description: "Decode amateur radio SSTV signals in real-time from your microphone. Supports Robot36 mode with professional DSP processing.",
-    images: ["https://sstv-decoder.vercel.app/og-image.png"],
+    site: "@smolgroot",
     creator: "@smolgroot",
+    title: "SSTV Decoder - Free Online SSTV Signal Decoder",
+    description: "Decode amateur radio SSTV signals in real-time from your microphone. Supports Robot36 mode. Perfect for ISS SSTV events and ham radio operations.",
+    images: {
+      url: "/og-image.png",
+      alt: "SSTV Decoder Interface",
+    },
+  },
+  verification: {
+    google: "google-site-verification-token", // Replace with actual token when you verify
   },
   robots: {
     index: true,
@@ -46,6 +87,23 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SSTV Decoder",
+    startupImage: "/icon-512.png",
+  },
+  applicationName: "SSTV Decoder",
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
+  other: {
+    "msapplication-TileColor": "#238636",
+    "msapplication-config": "/browserconfig.xml",
+  },
 };
 
 export const viewport: Viewport = {
@@ -53,6 +111,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  themeColor: "#238636",
 };
 
 export default function RootLayout({
