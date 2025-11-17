@@ -12,7 +12,7 @@ export default function Home() {
             Real-time Slow Scan Television signal decoder from microphone
           </p>
           <div className="flex flex-wrap gap-2">
-            <a 
+            <a
               href="https://github.com/smolgroot/sstv-decoder"
               target="_blank"
               rel="noopener noreferrer"
