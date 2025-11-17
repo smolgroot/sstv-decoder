@@ -181,28 +181,21 @@ export default function SSTVDecoder() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Controls */}
-      <div className="bg-gray-900 rounded-lg p-4 sm:p-6 space-y-4">
-        {/* Robot36 Mode Indicator */}
-        <div className="w-full text-center">
-          <span className="inline-block bg-blue-900 text-blue-200 px-4 py-2 rounded-md font-semibold text-sm sm:text-base">
-            Robot 36 Mode (320x240)
-          </span>
-        </div>
-
-        {/* Action buttons - full width on mobile, flex on larger screens */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 sm:p-6 space-y-4">
+                {/* Action buttons - full width on mobile, flex on larger screens */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {!state.isRecording ? (
             <button
               onClick={handleStart}
               disabled={!state.isSupported}
-              className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
+              className="w-full sm:flex-1 bg-[#238636] hover:bg-[#2ea043] active:bg-[#2ea043] disabled:bg-[#21262d] disabled:text-[#8b949e] disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base border border-transparent disabled:border-[#30363d]"
             >
               Start Decoding
             </button>
           ) : (
             <button
               onClick={handleStop}
-              className="w-full sm:flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
+              className="w-full sm:flex-1 bg-[#da3633] hover:bg-[#f85149] active:bg-[#f85149] text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
             >
               Stop
             </button>
@@ -211,14 +204,14 @@ export default function SSTVDecoder() {
           <button
             onClick={handleReset}
             disabled={!state.isRecording}
-            className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base"
+            className="w-full sm:flex-1 bg-[#21262d] hover:bg-[#30363d] active:bg-[#30363d] disabled:bg-[#21262d] disabled:text-[#8b949e] disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-md transition-colors text-base border border-[#30363d]"
           >
             Reset
           </button>
 
           <button
             onClick={handleSaveImage}
-            className="w-full sm:flex-1 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold px-6 py-3 rounded-md transition-colors text-base flex items-center justify-center gap-2"
+            className="w-full sm:flex-1 bg-[#21262d] hover:bg-[#30363d] active:bg-[#30363d] text-white font-semibold px-6 py-3 rounded-md transition-colors text-base border border-[#30363d] flex items-center justify-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -228,13 +221,13 @@ export default function SSTVDecoder() {
         </div>
 
         {state.error && (
-          <div className="bg-red-900/50 border border-red-700 rounded-md p-3 text-red-200 text-sm sm:text-base">
+          <div className="bg-[#da3633]/10 border border-[#f85149]/30 rounded-md p-3 text-[#f85149] text-sm sm:text-base">
             {state.error}
           </div>
         )}
 
         {!state.isSupported && (
-          <div className="bg-yellow-900/50 border border-yellow-700 rounded-md p-3 text-yellow-200 text-sm sm:text-base">
+          <div className="bg-[#bb8009]/10 border border-[#bb8009]/30 rounded-md p-3 text-[#e3b341] text-sm sm:text-base">
             Web Audio API is not supported in this browser
           </div>
         )}
@@ -242,24 +235,24 @@ export default function SSTVDecoder() {
         {/* Stats */}
         {state.stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
-            <div className="bg-gray-800/50 rounded-lg p-3">
-              <div className="text-gray-400 text-xs sm:text-sm mb-1">State</div>
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">State</div>
               <div className={`font-mono font-semibold text-sm sm:text-base ${getStateColor()}`}>
                 {state.stats.state}
               </div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-3">
-              <div className="text-gray-400 text-xs sm:text-sm mb-1">Mode</div>
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">Mode</div>
               <div className="font-mono font-semibold text-sm sm:text-base truncate">{state.stats.mode}</div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-3">
-              <div className="text-gray-400 text-xs sm:text-sm mb-1">Line</div>
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">Line</div>
               <div className="font-mono font-semibold text-sm sm:text-base">
                 {state.stats.currentLine} / {state.stats.totalLines}
               </div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-3">
-              <div className="text-gray-400 text-xs sm:text-sm mb-1">Frequency</div>
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">Frequency</div>
               <div className="font-mono font-semibold text-sm sm:text-base">{state.stats.frequency} Hz</div>
             </div>
           </div>
@@ -267,9 +260,9 @@ export default function SSTVDecoder() {
 
         {/* Progress bar */}
         {state.stats && state.stats.progress > 0 && (
-          <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-[#21262d] rounded-full h-2 overflow-hidden border border-[#30363d]">
             <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-[#238636] h-2 rounded-full transition-all duration-300"
               style={{ width: `${Math.min(100, state.stats.progress)}%` }}
             />
           </div>
@@ -279,43 +272,43 @@ export default function SSTVDecoder() {
       {/* Canvas Display - prioritize decoded image on mobile */}
       <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
         {/* Decoded Image - main focus */}
-        <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 sm:p-4">
           <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Decoded Image</h2>
           <canvas
             ref={canvasRef}
             width={640}
             height={480}
-            className="w-full border border-gray-700 rounded bg-black touch-manipulation"
+            className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
           />
         </div>
 
         {/* Audio Spectrum - collapsible on mobile */}
-        <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-lg sm:text-xl font-semibold">Audio Spectrum</h2>
-            
+
             {/* Signal Strength Indicator */}
             {state.stats && (
               <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm text-gray-400">Signal</span>
+                <span className="text-xs sm:text-sm text-[#8b949e]">Signal</span>
                 <div className="flex items-center gap-1">
                   {/* Signal strength bars */}
                   {[0, 1, 2, 3, 4].map((bar) => {
                     const threshold = bar * 20;
                     const isActive = state.stats!.signalStrength > threshold;
                     const barHeight = 8 + bar * 3;
-                    let barColor = 'bg-gray-700';
-                    
+                    let barColor = 'bg-[#21262d]';
+
                     if (isActive) {
                       if (state.stats!.signalStrength < 30) {
-                        barColor = 'bg-red-500';
+                        barColor = 'bg-[#da3633]';
                       } else if (state.stats!.signalStrength < 60) {
-                        barColor = 'bg-yellow-500';
+                        barColor = 'bg-[#e3b341]';
                       } else {
-                        barColor = 'bg-green-500';
+                        barColor = 'bg-[#2ea043]';
                       }
                     }
-                    
+
                     return (
                       <div
                         key={bar}
@@ -325,36 +318,36 @@ export default function SSTVDecoder() {
                     );
                   })}
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-gray-300 min-w-[3ch]">
+                <span className="text-xs sm:text-sm font-mono text-[#c9d1d9] min-w-[3ch]">
                   {state.stats.signalStrength}%
                 </span>
               </div>
             )}
           </div>
-          
+
           <canvas
             ref={spectrumCanvasRef}
             width={640}
             height={480}
-            className="w-full border border-gray-700 rounded bg-black touch-manipulation"
+            className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
           />
         </div>
       </div>
 
       {/* Info - collapsible on mobile */}
-      <details className="bg-gray-900 rounded-lg" open>
-        <summary className="cursor-pointer p-4 sm:p-6 font-semibold text-lg sm:text-xl hover:bg-gray-800/50 rounded-lg transition-colors select-none">
+      <details className="bg-[#161b22] border border-[#30363d] rounded-lg" open>
+        <summary className="cursor-pointer p-4 sm:p-6 font-semibold text-lg sm:text-xl hover:bg-[#21262d] rounded-lg transition-colors select-none">
           How to Use
         </summary>
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          <ol className="list-decimal list-inside space-y-2 text-sm sm:text-base text-gray-300">
+          <ol className="list-decimal list-inside space-y-2 text-sm sm:text-base text-[#c9d1d9]">
             <li>Click &quot;Start Decoding&quot; to begin capturing audio from your microphone</li>
             <li>Play an SSTV signal (you can use a signal generator or recording)</li>
             <li>Watch as the image is decoded in real-time on the canvas</li>
             <li>Click &quot;Reset&quot; to clear the image and start over</li>
             <li>Click &quot;Stop&quot; when finished</li>
           </ol>
-          <p className="mt-4 text-xs sm:text-sm text-gray-400">
+          <p className="mt-4 text-xs sm:text-sm text-[#8b949e]">
             Note: For best results, ensure your audio source is clear and at an appropriate volume level.
             The decoder will automatically detect sync pulses and begin decoding.
           </p>
