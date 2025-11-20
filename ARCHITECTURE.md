@@ -17,32 +17,52 @@ This is a web-based SSTV (Slow Scan Television) decoder supporting multiple mode
 
 ### PD120
 - **Resolution**: 640×496 pixels
-- **Line time**: ~497ms (high resolution)
-- **Total time**: ~4 minutes
-- **Color encoding**: Sequential RGB (Y, R-Y, B-Y per line)
+- **Scan line time**: ~508ms per scan line
+- **Total time**: ~2 minutes 6 seconds
+- **Color encoding**: Dual-luminance YUV (Y-even + V-avg + U-avg + Y-odd)
+- **Rows per scan**: 2 rows (shared chroma)
 - **Use case**: High-quality images, ISS SSTV events
 
 For detailed specifications, see:
 - [Robot36 Technical Documentation](./doc/ROBOT36.md)
 - [PD120 Technical Documentation](./doc/PD120.md)
 
+### Mode Comparison
+
+| Feature | Robot36 | PD120 |
+|---------|---------|-------|
+| **Resolution** | 320×240 | 640×496 |
+| **Total Pixels** | 76,800 | 317,440 (4.1×) |
+| **Sync Pulse** | 9ms | 20ms |
+| **Scan Line Time** | 150ms | 508ms |
+| **Total Time** | 36 seconds | 2m 6s |
+| **Scan Lines** | 240 | 248 |
+| **Rows per Scan** | 1 row | 2 rows |
+| **Color Encoding** | Interlaced YUV | Dual-luminance YUV |
+| **Chroma Strategy** | Alternating R-Y/B-Y | Shared V-avg/U-avg |
+| **Vertical Subsampling** | 2:1 (interlaced) | 2:1 (shared) |
+| **ISS Usage** | Rare | Very Common |
+| **Best For** | Quick QSOs | High-quality images |
+
 ### Key Features
 
-- ✅ **Sync pulse detection** - Detects 9ms pulses at 1200Hz to find actual line boundaries
-- ✅ **Line-based processing** - Buffers audio and decodes complete lines after sync detection
-- ✅ **FM demodulation** - Converts audio to baseband complex signal, extracts instantaneous frequency
-- ✅ **Bidirectional filtering** - Forward and backward exponential moving average for smooth horizontal pixels
-- ✅ **Proper interlacing** - Even lines store R-Y chroma, odd lines store B-Y chroma, combined for RGB output
-- ✅ **Multi-browser support** - Works on Chrome, Firefox, Safari (desktop and mobile)
-- ✅ **Real-time visualization** - Live spectrum analyzer and signal strength meter
-- ✅ **Progressive rendering** - Image appears line-by-line as it decodes
+- **Multi-mode support** - Robot36 (320×240) and PD120 (640×496) with manual mode selection
+- **Sync pulse detection** - Detects 9ms (Robot36) and 20ms (PD120) pulses at 1200Hz
+- **Line-based processing** - Buffers audio and decodes complete lines after sync detection
+- **FM demodulation** - Converts audio to baseband complex signal, extracts instantaneous frequency
+- **Bidirectional filtering** - Forward and backward exponential moving average for smooth horizontal pixels
+- **Mode-specific decoding**:
+  - Robot36: Interlaced YUV (even lines R-Y, odd lines B-Y, paired for RGB)
+  - PD120: Dual-luminance (2 rows per scan, shared chroma)
+- **Multi-browser support** - Works on Chrome, Firefox, Safari (desktop and mobile)
+- **Real-time visualization** - Live spectrum analyzer and signal strength meter
+- **Progressive rendering** - Image appears line-by-line as it decodes
 
 ### Technology Stack
 
 **Frontend:**
 - Next.js 15 (React 19, App Router)
 - TypeScript 5
-- Tailwind CSS (GitHub dark theme)
 - Canvas API for image rendering
 
 **Audio Processing:**
@@ -305,14 +325,29 @@ b = (yScaled + 516 * uScaled + 128) >> 8;
 ### Current Limitations & Future Enhancements
 
 **Current Scope:**
-- ✅ Multi-mode support (Robot36, PD120)
-- ✅ Manual mode selection via settings UI
+- Multi-mode support (Robot36, PD120)
+- Manual mode selection via settings UI
 - 7-second audio buffer (sufficient for normal operation)
 - Manual volume adjustment required for optimal signal levels
 
 **Planned Improvements:**
+
+**Phase 1 - Additional PD Modes (Low Complexity):**
+- [ ] PD50, PD90, PD160, PD180, PD240, PD290
+- [ ] All use dual-luminance encoding like PD120
+- [ ] Minimal code changes required
+
+**Phase 2 - Robot Family:**
+- [ ] Robot72 Color (similar to Robot36, longer duration)
+- [ ] Uses same interlaced YUV structure
+
+**Phase 3 - Sequential RGB Modes:**
+- [ ] Scottie S1, S2, DX (RGB sequential)
+- [ ] Martin M1, M2 (GBR sequential)
+- [ ] Wraase SC2-180
+
+**Phase 4 - Advanced Features:**
 - [ ] VIS code detection for automatic mode selection
-- [ ] Additional SSTV modes (Martin M1, Scottie S1, PD180, PD290)
 - [ ] Automatic gain control (AGC)
 - [ ] Enhanced noise reduction algorithms
 - [ ] Audio file upload for offline decoding

@@ -1,6 +1,6 @@
 # SSTV Decoder Web Application
 
-A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
+A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Supports multiple SSTV modes including Robot36 and PD120. Based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
 
 🚀 **[Try the Live Demo](https://sstv-decoder.vercel.app)**
 
@@ -8,17 +8,76 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 ## Features
 
+- **Multi-Mode Support**: Robot36 Color (320×240) and PD120 (640×496) with manual mode selection
 - **Real-time Audio Processing**: Captures microphone input using Web Audio API (auto-detects 44.1 kHz or 48 kHz)
-- **SSTV Decoding**: Robot36 Color mode (320x240 resolution, interlaced YUV)
 - **Professional DSP Chain**:
   - FM demodulation with complex baseband conversion
   - Kaiser-windowed FIR lowpass filtering
   - Schmitt trigger sync detection
   - Bidirectional exponential moving average filtering
-- **Sync Detection**: Automatic detection of 9ms sync pulses at 1200 Hz
-- **Live Image Display**: Progressive interlaced image rendering
+- **Sync Detection**: Automatic detection of sync pulses (9ms for Robot36, 20ms for PD modes)
+- **Live Image Display**: Progressive image rendering with real-time spectrum visualization
+- **Mode Selection**: Switch between SSTV modes via settings panel
 - **Save Image**: Export decoded images as PNG files
+- **Signal Analysis**: Real-time spectrum analyzer and signal strength indicator
 - **Mobile-Responsive**: Optimized for both desktop and mobile devices
+
+## Supported SSTV Modes
+
+### Current Implementation
+
+| Mode | Resolution | Sync Pulse | Line Time | Total Time | VIS Code | Status | Documentation |
+|------|------------|------------|-----------|------------|----------|---------|---------------|
+| **Robot36 Color** | 320×240 | 9ms | ~150ms | ~36s | 8 | ✅ Implemented | [ROBOT36.md](./doc/ROBOT36.md) |
+| **PD120** | 640×496 | 20ms | ~508ms | ~2m 6s | 95 | ✅ Implemented | [PD120.md](./doc/PD120.md) |
+
+### Future Modes (Planned)
+
+The decoder architecture supports adding these modes in future updates:
+
+| Mode | Resolution | Sync Pulse | Line Time | Total Time | VIS Code | Complexity |
+|------|------------|------------|-----------|------------|----------|------------|
+| **Robot72 Color** | 320×240 | 9ms | ~300ms | ~1m 12s | 12 | Low (similar to Robot36) |
+| **Scottie S1** | 320×256 | 9ms | ~428ms | ~1m 50s | 60 | Medium (RGB sequential) |
+| **Scottie S2** | 320×256 | 9ms | ~277ms | ~1m 11s | 56 | Medium (RGB sequential) |
+| **Scottie DX** | 320×256 | 9ms | ~1069ms | ~4m 34s | 76 | Medium (RGB sequential) |
+| **Martin M1** | 320×256 | 5ms | ~446ms | ~1m 54s | 44 | Medium (GBR sequential) |
+| **Martin M2** | 320×256 | 5ms | ~226ms | ~58s | 40 | Medium (GBR sequential) |
+| **PD50** | 320×256 | 20ms | ~406ms | ~1m 44s | 93 | Low (dual-luma like PD120) |
+| **PD90** | 320×256 | 20ms | ~754ms | ~3m 13s | 99 | Low (dual-luma like PD120) |
+| **PD160** | 512×400 | 20ms | ~838ms | ~5m 35s | 98 | Low (dual-luma like PD120) |
+| **PD180** | 640×496 | 20ms | ~761ms | ~3m 9s | 96 | Low (dual-luma like PD120) |
+| **PD240** | 640×496 | 20ms | ~1018ms | ~4m 13s | 97 | Low (dual-luma like PD120) |
+| **PD290** | 800×616 | 20ms | ~954ms | ~4m 54s | 94 | Low (dual-luma like PD120) |
+| **Wraase SC2-180** | 320×256 | 5ms | ~734ms | ~3m 8s | 55 | Medium (RGB sequential) |
+
+### Mode Selection Guide
+
+**For Quick Transmissions** (under 1 minute):
+- **Robot36**: 36 seconds, good quality, standard for QSOs
+- **Martin M2**: 58 seconds, RGB sequential, no interlacing
+- **Robot72**: 72 seconds, higher quality than Robot36
+
+**For High Quality** (1-3 minutes):
+- **PD120**: 2m 6s, 640×496, excellent for ISS SSTV events
+- **Scottie S1**: 1m 50s, RGB sequential, clean colors
+- **PD180**: 3m 9s, 640×496, extended transmission
+
+**For Maximum Quality** (3+ minutes):
+- **PD240**: 4m 13s, 640×496, very high quality
+- **PD290**: 4m 54s, 800×616, maximum resolution
+- **Scottie DX**: 4m 34s, high quality RGB
+
+### Technical Comparison
+
+| Feature | Robot36/72 | Scottie/Martin | PD Modes |
+|---------|------------|----------------|----------|
+| **Color Encoding** | Interlaced YUV | Sequential RGB/GBR | Dual-luma YUV |
+| **Chroma Strategy** | Alternating R-Y/B-Y per line | Full RGB per line | Shared U/V per 2 rows |
+| **Rows per Scan** | 1 row | 1 row | 2 rows |
+| **Vertical Subsampling** | 2:1 (interlaced) | None (1:1) | 2:1 (shared chroma) |
+| **Complexity** | Medium (interlacing) | Low (sequential) | Low (dual-luma) |
+| **ISS Usage** | Rare | Occasional | Very Common (PD120) |
 
 ## Technology Stack
 
@@ -66,15 +125,19 @@ npm start
 
 ## How to Use
 
-1. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
-2. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
-3. **Play SSTV Signal**: Play a Robot36 SSTV signal near your microphone (from another device, radio, etc.)
-4. **Watch Live Decoding**: The decoded image will appear progressively on the canvas
-5. **Reset**: Click "Reset" to clear the canvas and start a new decode
-6. **Save Image**: Click "Save Image" to download the decoded image as a PNG file
-   - Filename format: `sstv-decode-robot36-{TIMESTAMP}.png`
-   - Example: `sstv-decode-robot36-20240315-143022.png`
-7. **Stop**: Click "Stop" to end the decoding session
+1. **Select Mode** (Optional): Click the settings icon (bottom-right) to choose between Robot36 or PD120
+   - Robot36: 320×240, fast decode (~36 seconds)
+   - PD120: 640×496, high resolution (~2 minutes), used for ISS SSTV
+2. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
+3. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
+4. **Play SSTV Signal**: Play an SSTV signal near your microphone (from radio, audio file, signal generator, etc.)
+5. **Watch Live Decoding**: The decoded image will appear progressively on the canvas
+6. **Monitor Signal**: Check the spectrum analyzer and signal strength indicator for optimal reception
+7. **Reset**: Click "Reset" to clear the canvas and start a new decode
+8. **Save Image**: Click "Save Image" to download the decoded image as a PNG file
+   - Filename format: `sstv-decode-{mode}-{TIMESTAMP}.png`
+   - Example: `sstv-decode-robot36-2024-03-15-143022.png`
+9. **Stop**: Click "Stop" to end the decoding session (image remains visible for saving)
 
 ## Technical Details
 
@@ -97,23 +160,39 @@ npm start
 ### Robot36 Color Mode Specifications
 
 - **Resolution**: 320×240 pixels
-- **Color Format**: Interlaced YUV (even lines: Y + B-Y, odd lines: Y + R-Y)
+- **Color Format**: Interlaced YUV (even lines: Y + R-Y, odd lines: Y + B-Y)
 - **Line Duration**: ~150ms per scan line
 - **Sync Pulse**: 9ms at 1200 Hz
 - **Sync Porch**: 3ms at 1500 Hz
 - **Luminance (Y)**: 88ms
-- **Separator**: 4.5ms
+- **Separator**: 4.5ms (frequency indicates even/odd line)
 - **Porch**: 1.5ms
 - **Chrominance (R-Y or B-Y)**: 44ms
-- **Total Lines**: 240 (120 even + 120 odd, interlaced)
+- **Total Lines**: 240 (produces 240 pixel rows, 120 even + 120 odd pairs)
+- **Encoding**: 1 row per scan line (interlaced chroma pairing)
+
+### PD120 Mode Specifications
+
+- **Resolution**: 640×496 pixels
+- **Color Format**: Dual-luminance YUV (Y-even + V-avg + U-avg + Y-odd)
+- **Scan Line Duration**: ~508ms per scan line
+- **Sync Pulse**: 20ms at 1200 Hz
+- **Sync Porch**: 2.08ms at 1500 Hz
+- **Y-even Channel**: 121.6ms (luminance for even row)
+- **V-avg Channel**: 121.6ms (R-Y chroma, shared)
+- **U-avg Channel**: 121.6ms (B-Y chroma, shared)
+- **Y-odd Channel**: 121.6ms (luminance for odd row)
+- **Total Scan Lines**: 248 (produces 496 pixel rows, 248 × 2)
+- **Encoding**: 2 rows per scan line (shared chroma between rows)
 
 ### Sync Detection
 
-- **9ms Pulses**: Scan line sync (samples scale with sample rate)
-- **5ms Pulses**: VIS code/calibration headers (ignored)
-- **20ms Pulses**: Frame sync
+- **9ms Pulses**: Robot36/Scottie scan line sync
+- **20ms Pulses**: PD mode scan line sync
+- **5ms Pulses**: Martin mode sync / VIS calibration headers
 - **Frequency Tolerance**: ±0.125 normalized units (~50 Hz at 1900 Hz center)
 - All timing automatically adapts to detected sample rate (44.1 kHz or 48 kHz)
+- Mode-specific pulse width detection ensures correct decoder selection
 
 ### Image Export
 
@@ -128,20 +207,27 @@ npm start
 src/
 ├── app/
 │   ├── layout.tsx              # Root layout with metadata
-│   ├── page.tsx                # Home page
+│   ├── page.tsx                # Home page with mode state management
 │   └── globals.css             # Global Tailwind styles
 ├── components/
-│   └── SSTVDecoder.tsx         # Main decoder UI component
+│   ├── SSTVDecoder.tsx         # Main decoder UI component
+│   └── SettingsPanel.tsx       # Mode selection settings panel
 ├── hooks/
-│   └── useAudioProcessor.ts    # Web Audio API integration
+│   └── useAudioProcessor.ts    # Web Audio API integration (mode-aware)
 └── lib/
     └── sstv/
-        ├── constants.ts             # SSTV mode timing constants
-        ├── decoder.ts               # Main decoder with sync detection
-        ├── sync-detector.ts         # Sync pulse detection logic
+        ├── constants.ts             # SSTV mode specifications (Robot36, PD120)
+        ├── decoder.ts               # Main decoder orchestration (multi-mode)
+        ├── sync-detector.ts         # Sync pulse detection (9ms/20ms)
         ├── robot36-line-decoder.ts  # Robot36 interlaced YUV decoder
-        ├── fm-demodulator.ts        # DSP primitives (FM demod, filters)
+        ├── pd120-line-decoder.ts    # PD120 dual-luminance decoder
+        ├── fm-demodulator.ts        # DSP primitives (FM demod, filters, EMA)
         └── dsp.ts                   # Legacy utilities (deprecated)
+
+doc/
+├── ROBOT36.md                  # Robot36 technical specification
+├── PD120.md                    # PD120 technical specification
+└── ARCHITECTURE.md             # Overall system architecture
 ```
 
 ## Browser Compatibility
@@ -212,11 +298,23 @@ This implementation closely follows the [Robot36 Android app](https://github.com
 
 ## Future Improvements
 
-- [ ] Add support for more SSTV modes (Martin M1, Scottie S1, etc.)
-- [ ] Implement VIS code detection for automatic mode selection
-- [ ] Add signal strength indicator
-- [ ] Improve sync detection robustness
-- [ ] Add audio file upload option (decode from WAV/MP3)
+### High Priority
+- [ ] **VIS Code Detection**: Automatic mode selection based on VIS header detection
+- [ ] **Additional PD Modes**: PD50, PD90, PD160, PD180, PD240, PD290 (low complexity, similar to PD120)
+- [ ] **Robot72 Color**: Similar to Robot36 but slower/higher quality
+- [ ] **Audio File Upload**: Decode from WAV/MP3 files for offline processing
+
+### Medium Priority
+- [ ] **Scottie Modes**: S1, S2, DX (RGB sequential encoding)
+- [ ] **Martin Modes**: M1, M2 (GBR sequential encoding)
+- [ ] **Wraase SC2-180**: High-quality RGB mode
+- [ ] **Improved Noise Reduction**: Advanced filtering for weak signals
+- [ ] **Signal Quality Metrics**: SNR calculation and display
+
+### Low Priority
+- [ ] **Waterfall Display**: Full spectrogram history
+- [ ] **Multi-image Gallery**: Store and compare multiple decoded images
+- [ ] **Export Metadata**: Include mode, timestamp, signal quality in saved files
 
 ## License
 

@@ -380,8 +380,15 @@ export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderP
               </div>
             </div>
             <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">Frequency</div>
-              <div className="font-mono font-semibold text-sm sm:text-base">{state.stats.frequency} Hz</div>
+              <div className="text-[#8b949e] text-xs sm:text-sm mb-1">SNR</div>
+              <div className={`font-mono font-semibold text-sm sm:text-base ${
+                state.stats.snr === null ? 'text-[#8b949e]' :
+                state.stats.snr < 10 ? 'text-[#da3633]' :
+                state.stats.snr < 18 ? 'text-[#e3b341]' :
+                'text-[#2ea043]'
+              }`}>
+                {state.stats.snr !== null ? `${state.stats.snr.toFixed(1)} dB` : '-- dB'}
+              </div>
             </div>
           </div>
         )}

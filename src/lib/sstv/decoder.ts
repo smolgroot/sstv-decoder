@@ -18,6 +18,7 @@ export interface DecoderStats {
   progress: number;
   frequency: number;
   signalStrength: number; // 0-100 percentage
+  snr: number | null; // Signal-to-Noise Ratio in dB (null if not available)
 }
 
 /**
@@ -235,6 +236,7 @@ export class SSTVDecoder {
       progress: (this.currentLine / this.mode.height) * 100,
       frequency: Math.round(1900 + this.frequencyOffset), // Center frequency + offset
       signalStrength: Math.round(this.signalStrength),
+      snr: null, // SNR will be calculated by the audio processor with AnalyserNode
     };
   }
 
