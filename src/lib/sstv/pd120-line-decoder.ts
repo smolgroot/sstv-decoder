@@ -22,7 +22,7 @@ export class PD120LineDecoder {
   private readonly scanLineSamples: number;
   private readonly channelSamples: number;
   private readonly beginSamples: number;
-  
+
   // Begin positions for each of the 4 channels
   private readonly yEvenBeginSamples: number;
   private readonly vAvgBeginSamples: number;  // V = R-Y
@@ -35,28 +35,28 @@ export class PD120LineDecoder {
     const syncPulseSeconds = 0.020;      // 20ms sync pulse
     const syncPorchSeconds = 0.00208;    // 2.08ms porch after sync
     const channelSeconds = 0.1216;       // 121.6ms per channel (all 4 channels same duration)
-    
+
     // Total scan line: sync(20ms) + porch(2.08ms) + 4 × channel(121.6ms) = 508.48ms
     const scanLineSeconds = syncPulseSeconds + syncPorchSeconds + 4 * channelSeconds;
-    
+
     this.scanLineSamples = Math.round(scanLineSeconds * sampleRate);
     this.channelSamples = Math.round(channelSeconds * sampleRate);
-    
+
     // Calculate begin positions for each channel
     // Structure: sync + porch + Y-even + V-avg + U-avg + Y-odd
     const yEvenBeginSeconds = syncPorchSeconds;
     this.yEvenBeginSamples = Math.round(yEvenBeginSeconds * sampleRate);
     this.beginSamples = this.yEvenBeginSamples;
-    
+
     const vAvgBeginSeconds = yEvenBeginSeconds + channelSeconds;
     this.vAvgBeginSamples = Math.round(vAvgBeginSeconds * sampleRate);
-    
+
     const uAvgBeginSeconds = vAvgBeginSeconds + channelSeconds;
     this.uAvgBeginSamples = Math.round(uAvgBeginSeconds * sampleRate);
-    
+
     const yOddBeginSeconds = uAvgBeginSeconds + channelSeconds;
     this.yOddBeginSamples = Math.round(yOddBeginSeconds * sampleRate);
-    
+
     const yOddEndSeconds = yOddBeginSeconds + channelSeconds;
     this.endSamples = Math.round(yOddEndSeconds * sampleRate);
 
@@ -136,19 +136,19 @@ export class PD120LineDecoder {
     for (let i = 0; i < this.horizontalPixels; i++) {
       // Calculate sample position within each channel
       const position = Math.floor((i * this.channelSamples) / this.horizontalPixels);
-      
+
       // Sample positions for each of the 4 channels
       const yEvenPos = position + this.yEvenBeginSamples;
       const vAvgPos = position + this.vAvgBeginSamples;   // V = R-Y (red difference)
       const uAvgPos = position + this.uAvgBeginSamples;   // U = B-Y (blue difference)
       const yOddPos = position + this.yOddBeginSamples;
-      
+
       // Extract and convert values (0-1 range to 0-255)
       const yEven = Math.max(0, Math.min(1, scratchBuffer[yEvenPos])) * 255;
       const uAvg = Math.max(0, Math.min(1, scratchBuffer[uAvgPos])) * 255;   // U = B-Y
       const vAvg = Math.max(0, Math.min(1, scratchBuffer[vAvgPos])) * 255;   // V = R-Y
       const yOdd = Math.max(0, Math.min(1, scratchBuffer[yOddPos])) * 255;
-      
+
       // Convert YUV to RGB for even row (first row)
       // yuv2rgb expects: Y, ry (R-Y), by (B-Y)
       const rgbEven = this.yuv2rgb(yEven, vAvg, uAvg);
@@ -156,7 +156,7 @@ export class PD120LineDecoder {
       pixels[i * 4 + 1] = rgbEven.g;
       pixels[i * 4 + 2] = rgbEven.b;
       pixels[i * 4 + 3] = 255;
-      
+
       // Convert YUV to RGB for odd row (second row)
       // Note: Same U and V (chroma averaged) for both even and odd rows
       const rgbOdd = this.yuv2rgb(yOdd, vAvg, uAvg);
