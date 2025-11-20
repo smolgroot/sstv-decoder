@@ -15,7 +15,7 @@ export interface SSTVMode {
   readonly colorOrder: readonly ('R' | 'G' | 'B')[];
 }
 
-// Robot36 SSTV mode only
+// SSTV modes
 export const SSTV_MODES = {
   ROBOT36: {
     name: 'Robot 36',
@@ -32,6 +32,22 @@ export const SSTV_MODES = {
     colorScanTime: 88,
     colorScanTimes: [88, 44], // Y=88ms, then ONE chrominance channel=44ms (alternates R-Y/B-Y)
     colorOrder: ['G', 'R', 'B'], // Not used for Robot36 (it's interlaced)
+  },
+  PD120: {
+    name: 'PD 120',
+    visCode: 95,
+    width: 640,
+    height: 496,
+    // PD120 line format: sync(20) + porch(2.08) + Y(121.6) + separator(4.862) + porch(1.504) + R(121.6) + separator(4.862) + porch(1.504) + B(121.6) = 496.628ms per line
+    scanTime: 496.628,
+    syncPulse: 20,
+    syncPorch: 2.08,
+    porchFreq: 1500,
+    separatorPulse: 4.862,
+    separatorPulses: [4.862, 4.862], // Two separators (after Y and after R)
+    colorScanTime: 121.6,
+    colorScanTimes: [121.6, 121.6, 121.6], // Y, R, B channels all 121.6ms
+    colorOrder: ['G', 'R', 'B'], // Actually Y, R, B for PD modes
   },
 } as const;
 

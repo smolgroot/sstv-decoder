@@ -1,12 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useAudioProcessor } from '@/hooks/useAudioProcessor';
+import { useAudioProcessor, SSTVMode } from '@/hooks/useAudioProcessor';
 import { DecoderState } from '@/lib/sstv/decoder';
+import SettingsPanel from './SettingsPanel';
 
-export default function SSTVDecoder() {
+interface SSTVDecoderProps {
+  selectedMode: SSTVMode;
+  onModeChange: (mode: SSTVMode) => void;
+}
+
+export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
+  const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
   const {
@@ -17,9 +24,17 @@ export default function SSTVDecoder() {
     getImageData,
     getDimensions,
     getAnalyser,
-  } = useAudioProcessor();
+  } = useAudioProcessor(selectedMode);
 
-  // Draw spectrum visualization
+  const handleModeChange = (newMode: SSTVMode) => {
+    // Stop recording if active
+    if (state.isRecording) {
+      stopRecording();
+    }
+    onModeChange(newMode);
+  };
+
+  // Draw spectrum visualization with frequency axis
   const drawSpectrum = useCallback((canvas: HTMLCanvasElement) => {
     const analyser = getAnalyser();
     if (!analyser) return;
@@ -31,22 +46,115 @@ export default function SSTVDecoder() {
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
 
+    const sampleRate = analyser.context.sampleRate;
+    const nyquist = sampleRate / 2;
+
+    // Reserve space for axis labels at the bottom
+    const axisHeight = 25;
+    const plotHeight = canvas.height - axisHeight;
+
     ctx.fillStyle = 'rgb(10, 10, 10)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const barWidth = canvas.width / bufferLength;
     let x = 0;
 
+    // Draw frequency bars
     for (let i = 0; i < bufferLength; i++) {
-      const barHeight = (dataArray[i] / 255) * canvas.height;
+      const barHeight = (dataArray[i] / 255) * plotHeight;
 
       const hue = (i / bufferLength) * 120;
       ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      ctx.fillRect(x, plotHeight - barHeight, barWidth, barHeight);
 
       x += barWidth;
     }
+
+    // Draw frequency axis
+    ctx.fillStyle = '#8b949e';
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 1;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+
+    // Draw horizontal line for axis
+    ctx.beginPath();
+    ctx.moveTo(0, plotHeight);
+    ctx.lineTo(canvas.width, plotHeight);
+    ctx.stroke();
+
+    // Calculate appropriate frequency step based on canvas width and nyquist frequency
+    // Aim for labels every ~80-100 pixels to avoid overlap
+    const pixelsPerLabel = 90;
+    const numLabels = Math.floor(canvas.width / pixelsPerLabel);
+    const freqStep = Math.ceil(nyquist / numLabels / 1000) * 1000; // Round to nearest 1000 Hz
+    
+    // Draw frequency labels
+    for (let freq = 0; freq <= nyquist; freq += freqStep) {
+      const binIndex = Math.floor((freq / nyquist) * bufferLength);
+      const xPos = (binIndex / bufferLength) * canvas.width;
+
+      // Draw tick mark
+      ctx.beginPath();
+      ctx.moveTo(xPos, plotHeight);
+      ctx.lineTo(xPos, plotHeight + 5);
+      ctx.stroke();
+
+      // Draw label - use kHz for frequencies >= 1000 Hz
+      let label;
+      if (freq >= 1000) {
+        label = `${(freq / 1000).toFixed(1)}k`;
+      } else {
+        label = `${freq}`;
+      }
+      ctx.fillText(label, xPos, plotHeight + 18);
+    }
+
+    // Draw "Hz" label at the end
+    ctx.textAlign = 'right';
+    ctx.fillText('Hz', canvas.width - 5, plotHeight + 18);
+
+    return dataArray; // Return the data for spectrogram
   }, [getAnalyser]);
+
+  // Draw spectrogram (waterfall display)
+  const drawSpectrogram = useCallback((canvas: HTMLCanvasElement, frequencyData: Uint8Array) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Scroll the existing image down by 1 pixel
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height - 1);
+    ctx.putImageData(imageData, 0, 1);
+
+    // Draw the new frequency data at the top
+    const barWidth = canvas.width / frequencyData.length;
+    
+    for (let i = 0; i < frequencyData.length; i++) {
+      const value = frequencyData[i];
+      
+      // Create a color gradient based on intensity
+      let r, g, b;
+      if (value < 85) {
+        // Black to blue
+        r = 0;
+        g = 0;
+        b = value * 3;
+      } else if (value < 170) {
+        // Blue to green
+        r = 0;
+        g = (value - 85) * 3;
+        b = 255 - (value - 85) * 3;
+      } else {
+        // Green to yellow/red
+        r = (value - 170) * 3;
+        g = 255;
+        b = 0;
+      }
+
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(i * barWidth, 0, Math.ceil(barWidth), 1);
+    }
+  }, []);
 
   // Update canvas with decoded image
   useEffect(() => {
@@ -79,18 +187,13 @@ export default function SSTVDecoder() {
     let lastRenderedLine = -1;
 
     const updateCanvas = () => {
-      if (!state.isRecording) {
-        animationFrameRef.current = requestAnimationFrame(updateCanvas);
-        return;
-      }
-
       const imageData = getImageData();
       const currentLine = state.stats?.currentLine ?? 0;
 
-      // Always update to see the progressive image
+      // Always update to see the progressive image (even when paused)
       if (imageData && offscreenCtx) {
         // Debug: Check if we have any non-black pixels
-        if (currentLine > lastRenderedLine && currentLine % 10 === 0) {
+        if (state.isRecording && currentLine > lastRenderedLine && currentLine % 10 === 0) {
           let nonBlackPixels = 0;
           for (let i = 0; i < imageData.length; i += 4) {
             if (imageData[i] > 0 || imageData[i+1] > 0 || imageData[i+2] > 0) {
@@ -116,10 +219,19 @@ export default function SSTVDecoder() {
         lastRenderedLine = currentLine;
       }
 
-      // Draw spectrum
-      const spectrumCanvas = spectrumCanvasRef.current;
-      if (spectrumCanvas) {
-        drawSpectrum(spectrumCanvas);
+      // Draw spectrum and spectrogram only when recording
+      if (state.isRecording) {
+        const spectrumCanvas = spectrumCanvasRef.current;
+        const spectrogramCanvas = spectrogramCanvasRef.current;
+        
+        if (spectrumCanvas) {
+          const frequencyData = drawSpectrum(spectrumCanvas);
+          
+          // Update spectrogram with the frequency data
+          if (spectrogramCanvas && frequencyData) {
+            drawSpectrogram(spectrogramCanvas, frequencyData);
+          }
+        }
       }
 
       animationFrameRef.current = requestAnimationFrame(updateCanvas);
@@ -132,7 +244,7 @@ export default function SSTVDecoder() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [state.isRecording, state.stats?.currentLine, getImageData, getDimensions, drawSpectrum, getAnalyser]);
+  }, [state.isRecording, state.stats?.currentLine, getImageData, getDimensions, drawSpectrum, drawSpectrogram, getAnalyser]);
 
   const handleStart = async () => {
     await startRecording();
@@ -180,6 +292,13 @@ export default function SSTVDecoder() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Settings Panel - floating cog icon */}
+      <SettingsPanel
+        currentMode={selectedMode}
+        onModeChange={handleModeChange}
+        disabled={state.isRecording}
+      />
+
       {/* Controls */}
       <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 sm:p-6 space-y-4">
                 {/* Action buttons - full width on mobile, flex on larger screens */}
@@ -282,19 +401,24 @@ export default function SSTVDecoder() {
       <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
         {/* Decoded Image - main focus */}
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 sm:p-4">
-          <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Decoded Image</h2>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h2 className="text-lg sm:text-xl font-semibold">Decoded Image</h2>
+            <span className="text-xs sm:text-sm text-[#8b949e] font-mono">
+              {getDimensions().width}×{getDimensions().height}
+            </span>
+          </div>
           <canvas
             ref={canvasRef}
-            width={640}
-            height={480}
+            width={getDimensions().width}
+            height={getDimensions().height}
             className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
           />
         </div>
 
-        {/* Audio Spectrum - collapsible on mobile */}
+        {/* Audio Analysis - spectrum and spectrogram */}
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl font-semibold">Audio Spectrum</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">Audio Analysis</h2>
 
             {/* Signal Strength Indicator */}
             {state.stats && (
@@ -334,17 +458,32 @@ export default function SSTVDecoder() {
             )}
           </div>
 
-          <canvas
-            ref={spectrumCanvasRef}
-            width={640}
-            height={480}
-            className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
-          />
+          {/* Real-time Spectrum */}
+          <div className="space-y-2">
+            <h3 className="text-sm sm:text-base font-medium text-[#8b949e]">Spectrum</h3>
+            <canvas
+              ref={spectrumCanvasRef}
+              width={640}
+              height={200}
+              className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
+            />
+          </div>
+
+          {/* Spectrogram (Waterfall) */}
+          <div className="space-y-2 mt-3 sm:mt-4">
+            <h3 className="text-sm sm:text-base font-medium text-[#8b949e]">Spectrogram</h3>
+            <canvas
+              ref={spectrogramCanvasRef}
+              width={640}
+              height={240}
+              className="w-full border border-[#30363d] rounded bg-[#0d1117] touch-manipulation"
+            />
+          </div>
         </div>
       </div>
 
       {/* Info - collapsible on mobile */}
-      <details className="bg-[#161b22] border border-[#30363d] rounded-lg" open>
+      <details className="bg-[#161b22] border border-[#30363d] rounded-lg">
         <summary className="cursor-pointer p-4 sm:p-6 font-semibold text-lg sm:text-xl hover:bg-[#21262d] rounded-lg transition-colors select-none">
           How to Use
         </summary>
@@ -359,6 +498,26 @@ export default function SSTVDecoder() {
           <p className="mt-4 text-xs sm:text-sm text-[#8b949e]">
             Note: For best results, ensure your audio source is clear and at an appropriate volume level.
             The decoder will automatically detect sync pulses and begin decoding.
+          </p>
+        </div>
+      </details>
+
+      {/* Privacy Information */}
+      <details className="bg-[#161b22] border border-[#30363d] rounded-lg">
+        <summary className="cursor-pointer p-4 sm:p-6 font-semibold text-lg sm:text-xl hover:bg-[#21262d] rounded-lg transition-colors select-none">
+          Privacy
+        </summary>
+        <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-3 text-sm sm:text-base text-[#c9d1d9]">
+          <p>
+            This application runs entirely in your browser on your local device (client-side). 
+            No audio data or decoded images are ever transmitted to any server.
+          </p>
+          <p>
+            The microphone permission is only used to capture and process the audio signal in real-time 
+            for SSTV decoding. All audio processing happens locally on your device using the Web Audio API.
+          </p>
+          <p className="text-xs sm:text-sm text-[#8b949e]">
+            Your privacy is fully protected - we don&apos;t collect, store, or transmit any of your data.
           </p>
         </div>
       </details>

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { SSTVDecoder, DecoderStats } from '@/lib/sstv/decoder';
 import { SSTV_MODES } from '@/lib/sstv/constants';
 
+export type SSTVMode = keyof typeof SSTV_MODES;
+
 export interface AudioProcessorState {
   isRecording: boolean;
   isSupported: boolean;
@@ -9,7 +11,7 @@ export interface AudioProcessorState {
   stats: DecoderStats | null;
 }
 
-export function useAudioProcessor() {
+export function useAudioProcessor(mode: SSTVMode = 'ROBOT36') {
   const [state, setState] = useState<AudioProcessorState>({
     isRecording: false,
     isSupported: false,
@@ -151,8 +153,8 @@ export function useAudioProcessor() {
         animationFrameRef.current = requestAnimationFrame(pollAudio);
       }
 
-      // Initialize and start decoder with the actual sample rate
-      decoderRef.current = new SSTVDecoder(audioContext.sampleRate);
+      // Initialize and start decoder with the actual sample rate and selected mode
+      decoderRef.current = new SSTVDecoder(audioContext.sampleRate, mode);
       decoderRef.current.start();
 
       setState(prev => ({
@@ -227,9 +229,12 @@ export function useAudioProcessor() {
   };
 
   const getDimensions = () => {
-    return decoderRef.current
-      ? decoderRef.current.getDimensions()
-      : { width: 320, height: 240 };
+    if (decoderRef.current) {
+      return decoderRef.current.getDimensions();
+    }
+    // Return dimensions based on current mode
+    const modeConfig = SSTV_MODES[mode];
+    return { width: modeConfig.width, height: modeConfig.height };
   };
 
   const getAnalyser = (): AnalyserNode | null => {

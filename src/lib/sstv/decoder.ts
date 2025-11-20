@@ -1,6 +1,9 @@
 import { SSTV_MODES, SSTVMode, SAMPLE_RATE } from './constants';
 import { SyncDetector, SyncPulseWidth } from './sync-detector';
-import { Robot36LineDecoder } from './robot36-line-decoder';
+import { Robot36LineDecoder, DecodedLine as Robot36DecodedLine } from './robot36-line-decoder';
+import { PD120LineDecoder, DecodedLine as PD120DecodedLine } from './pd120-line-decoder';
+
+type DecodedLine = Robot36DecodedLine | PD120DecodedLine;
 
 export enum DecoderState {
   IDLE = 'IDLE',
@@ -23,6 +26,7 @@ export interface DecoderStats {
  */
 export class SSTVDecoder {
   private mode: SSTVMode;
+  private modeName: keyof typeof SSTV_MODES;
   private state: DecoderState = DecoderState.IDLE;
   private imageData: Uint8ClampedArray;
   private currentLine: number = 0;
@@ -36,7 +40,7 @@ export class SSTVDecoder {
 
   // Sync detection
   private syncDetector: SyncDetector;
-  private lineDecoder: Robot36LineDecoder;
+  private lineDecoder: Robot36LineDecoder | PD120LineDecoder;
 
   // Line boundaries detected by sync pulses
   private lastSyncPos: number = -1;
@@ -48,29 +52,34 @@ export class SSTVDecoder {
   // Signal strength tracking
   private signalStrength: number = 0;
 
-  constructor(sampleRate: number = SAMPLE_RATE) {
+  constructor(sampleRate: number = SAMPLE_RATE, modeName: keyof typeof SSTV_MODES = 'ROBOT36') {
     this.sampleRate = sampleRate;
+    this.modeName = modeName;
+    this.mode = SSTV_MODES[modeName];
+    
+    // Initialize image data based on mode dimensions
+    this.imageData = new Uint8ClampedArray(this.mode.width * this.mode.height * 4);
 
-    // Robot36 only
-    this.mode = SSTV_MODES['ROBOT36'];
-    this.imageData = new Uint8ClampedArray(320 * 240 * 4);
-
-    // Initialize with grey
+    // Initialize with black
     for (let i = 0; i < this.imageData.length; i += 4) {
-      this.imageData[i] = 128;     // R
-      this.imageData[i + 1] = 128; // G
-      this.imageData[i + 2] = 128; // B
+      this.imageData[i] = 0;       // R
+      this.imageData[i + 1] = 0;   // G
+      this.imageData[i + 2] = 0;   // B
       this.imageData[i + 3] = 255; // A
     }
 
-    // Buffer size: 7 seconds (max line ~150ms + safety margin)
+    // Buffer size: 7 seconds (max line ~500ms for PD120 + safety margin)
     this.bufferSize = Math.floor(sampleRate * 7);
     this.audioBuffer = new Float32Array(this.bufferSize);
     this.demodulatedBuffer = new Float32Array(this.bufferSize);
 
-    // Create sync detector and line decoder
+    // Create sync detector and mode-specific line decoder
     this.syncDetector = new SyncDetector(sampleRate);
-    this.lineDecoder = new Robot36LineDecoder(sampleRate);
+    if (modeName === 'ROBOT36') {
+      this.lineDecoder = new Robot36LineDecoder(sampleRate);
+    } else {
+      this.lineDecoder = new PD120LineDecoder(sampleRate);
+    }
   }
 
   // Sample counter for periodic logging
@@ -181,17 +190,17 @@ export class SSTVDecoder {
 
     // Copy decoded pixels to image data
     if (line && line.height > 0) {
-      // height=0 for even lines (stores data), height=2 for odd lines (outputs 2 lines)
+      // height=0 for even lines (Robot36 stores data), height=1 for PD120, height=2 for Robot36 odd lines (outputs 2 lines)
       const pixelsPerLine = line.width;
       const numLines = line.height;
 
       for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
         const targetLine = this.currentLine + lineIdx;
-        if (targetLine >= 240) continue;
+        if (targetLine >= this.mode.height) continue;
 
-        for (let x = 0; x < pixelsPerLine && x < 320; x++) {
+        for (let x = 0; x < pixelsPerLine && x < this.mode.width; x++) {
           const srcIdx = (lineIdx * pixelsPerLine + x) * 4;
-          const destIdx = (targetLine * 320 + x) * 4;
+          const destIdx = (targetLine * this.mode.width + x) * 4;
 
           this.imageData[destIdx] = line.pixels[srcIdx];       // R
           this.imageData[destIdx + 1] = line.pixels[srcIdx + 1]; // G
@@ -201,9 +210,9 @@ export class SSTVDecoder {
       }
 
       this.currentLine += numLines;
-      console.log(`Decoded ${numLines} line(s), now at line ${this.currentLine}/240`);
+      console.log(`Decoded ${numLines} line(s), now at line ${this.currentLine}/${this.mode.height}`);
     } else if (line && line.height === 0) {
-      console.log(`Stored even line for interlacing`);
+      console.log(`Stored even line for interlacing (Robot36)`);
     }
   }
 
@@ -220,10 +229,10 @@ export class SSTVDecoder {
   getStats(): DecoderStats {
     return {
       state: this.state,
-      mode: 'Robot 36',
+      mode: this.mode.name,
       currentLine: this.currentLine,
-      totalLines: 240,
-      progress: (this.currentLine / 240) * 100,
+      totalLines: this.mode.height,
+      progress: (this.currentLine / this.mode.height) * 100,
       frequency: Math.round(1900 + this.frequencyOffset), // Center frequency + offset
       signalStrength: Math.round(this.signalStrength),
     };
@@ -234,8 +243,8 @@ export class SSTVDecoder {
    */
   getDimensions(): { width: number; height: number } {
     return {
-      width: 320,
-      height: 240,
+      width: this.mode.width,
+      height: this.mode.height,
     };
   }
 

@@ -2,9 +2,29 @@
 
 ## Overview
 
-This is a web-based SSTV (Slow Scan Television) decoder supporting Robot36 Color mode. The implementation follows professional DSP techniques with FM demodulation, sync pulse detection, and proper interlaced YUV processing, based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
+This is a web-based SSTV (Slow Scan Television) decoder supporting multiple modes including Robot36 Color and PD120. The implementation follows professional DSP techniques with FM demodulation, sync pulse detection, and proper color space processing, based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
 
 **Live Demo:** [https://sstv-decoder.vercel.app](https://sstv-decoder.vercel.app)
+
+## Supported SSTV Modes
+
+### Robot36 Color
+- **Resolution**: 320×240 pixels
+- **Line time**: ~150ms (fast mode)
+- **Total time**: ~36 seconds
+- **Color encoding**: Interlaced YUV (Y + R-Y/B-Y alternating)
+- **Use case**: Quick transmissions, amateur radio
+
+### PD120
+- **Resolution**: 640×496 pixels  
+- **Line time**: ~497ms (high resolution)
+- **Total time**: ~4 minutes
+- **Color encoding**: Sequential RGB (Y, R-Y, B-Y per line)
+- **Use case**: High-quality images, ISS SSTV events
+
+For detailed specifications, see:
+- [Robot36 Technical Documentation](./doc/ROBOT36.md)
+- [PD120 Technical Documentation](./doc/PD120.md)
 
 ### Key Features
 
@@ -285,13 +305,14 @@ b = (yScaled + 516 * uScaled + 128) >> 8;
 ### Current Limitations & Future Enhancements
 
 **Current Scope:**
-- Single mode support (Robot36 Color only)
+- ✅ Multi-mode support (Robot36, PD120)
+- ✅ Manual mode selection via settings UI
 - 7-second audio buffer (sufficient for normal operation)
 - Manual volume adjustment required for optimal signal levels
 
 **Planned Improvements:**
 - [ ] VIS code detection for automatic mode selection
-- [ ] Additional SSTV modes (Martin M1, Scottie S1, PD modes)
+- [ ] Additional SSTV modes (Martin M1, Scottie S1, PD180, PD290)
 - [ ] Automatic gain control (AGC)
 - [ ] Enhanced noise reduction algorithms
 - [ ] Audio file upload for offline decoding
