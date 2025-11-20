@@ -88,7 +88,7 @@ export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderP
     const pixelsPerLabel = 90;
     const numLabels = Math.floor(canvas.width / pixelsPerLabel);
     const freqStep = Math.ceil(nyquist / numLabels / 1000) * 1000; // Round to nearest 1000 Hz
-    
+
     // Draw frequency labels
     for (let freq = 0; freq <= nyquist; freq += freqStep) {
       const binIndex = Math.floor((freq / nyquist) * bufferLength);
@@ -128,10 +128,10 @@ export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderP
 
     // Draw the new frequency data at the top
     const barWidth = canvas.width / frequencyData.length;
-    
+
     for (let i = 0; i < frequencyData.length; i++) {
       const value = frequencyData[i];
-      
+
       // Create a color gradient based on intensity
       let r, g, b;
       if (value < 85) {
@@ -223,10 +223,10 @@ export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderP
       if (state.isRecording) {
         const spectrumCanvas = spectrumCanvasRef.current;
         const spectrogramCanvas = spectrogramCanvasRef.current;
-        
+
         if (spectrumCanvas) {
           const frequencyData = drawSpectrum(spectrumCanvas);
-          
+
           // Update spectrogram with the frequency data
           if (spectrogramCanvas && frequencyData) {
             drawSpectrogram(spectrogramCanvas, frequencyData);
@@ -509,11 +509,11 @@ export default function SSTVDecoder({ selectedMode, onModeChange }: SSTVDecoderP
         </summary>
         <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-3 text-sm sm:text-base text-[#c9d1d9]">
           <p>
-            This application runs entirely in your browser on your local device (client-side). 
+            This application runs entirely in your browser on your local device (client-side).
             No audio data or decoded images are ever transmitted to any server.
           </p>
           <p>
-            The microphone permission is only used to capture and process the audio signal in real-time 
+            The microphone permission is only used to capture and process the audio signal in real-time
             for SSTV decoding. All audio processing happens locally on your device using the Web Audio API.
           </p>
           <p className="text-xs sm:text-sm text-[#8b949e]">

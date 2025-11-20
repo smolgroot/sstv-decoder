@@ -16,7 +16,7 @@ This is a web-based SSTV (Slow Scan Television) decoder supporting multiple mode
 - **Use case**: Quick transmissions, amateur radio
 
 ### PD120
-- **Resolution**: 640×496 pixels  
+- **Resolution**: 640×496 pixels
 - **Line time**: ~497ms (high resolution)
 - **Total time**: ~4 minutes
 - **Color encoding**: Sequential RGB (Y, R-Y, B-Y per line)

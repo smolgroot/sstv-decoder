@@ -7,7 +7,7 @@ export type SSTVMode = 'ROBOT36' | 'PD120';
 
 export default function Home() {
   const [selectedMode, setSelectedMode] = useState<SSTVMode>('ROBOT36');
-  
+
   // Get mode display info
   const getModeInfo = () => {
     switch (selectedMode) {
@@ -19,7 +19,7 @@ export default function Home() {
         return { name: 'Robot36 Mode', resolution: '320×240 px' };
     }
   };
-  
+
   const modeInfo = getModeInfo();
   const jsonLd = {
     "@context": "https://schema.org",

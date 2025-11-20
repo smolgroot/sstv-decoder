@@ -19,14 +19,14 @@ export class PD120LineDecoder {
   private readonly horizontalPixels = 640;
   private readonly verticalPixels = 496;
   private readonly samplesPerMs: number;
-  
+
   // Timing samples for each component
   private readonly ySamples: number;
   private readonly rSamples: number;
   private readonly bSamples: number;
   private readonly separatorSamples: number;
   private readonly porchSamples: number;
-  
+
   // Begin positions for each component
   private readonly yBeginSamples: number;
   private readonly rBeginSamples: number;
@@ -78,7 +78,7 @@ export class PD120LineDecoder {
     // This handles studio range (16-235) correctly
     // V = R-Y (ry parameter)
     // U = B-Y (by parameter)
-    
+
     const yAdj = y - 16;
     const uAdj = by - 128;  // B-Y
     const vAdj = ry - 128;  // R-Y
@@ -145,7 +145,7 @@ export class PD120LineDecoder {
 
       // Y channel: luminance (0-255)
       yChannel[i] = Math.max(0, Math.min(1, scratchBuffer[yPos])) * 255;
-      
+
       // R-Y and B-Y channels: color differences (centered at 128)
       // These represent (R-Y) and (B-Y) difference signals, not direct R and B values
       ryChannel[i] = Math.max(0, Math.min(1, scratchBuffer[ryPos])) * 255;
@@ -155,7 +155,7 @@ export class PD120LineDecoder {
     // Apply 5-pixel median filter to chroma channels for noise reduction
     const ryFiltered = new Float32Array(this.horizontalPixels);
     const byFiltered = new Float32Array(this.horizontalPixels);
-    
+
     for (let i = 0; i < this.horizontalPixels; i++) {
       // Get 5 neighboring values (or edge values if near boundaries)
       const i1 = Math.max(0, i - 2);
@@ -183,9 +183,9 @@ export class PD120LineDecoder {
       // Reduce chroma saturation
       const ry = 128 + (ryFiltered[i] - 128) * CHROMA_REDUCTION;
       const by = 128 + (byFiltered[i] - 128) * CHROMA_REDUCTION;
-      
+
       const rgb = this.yuv2rgb(yChannel[i], ry, by);
-      
+
       pixels[i * 4] = rgb.r;
       pixels[i * 4 + 1] = rgb.g;
       pixels[i * 4 + 2] = rgb.b;
@@ -196,7 +196,7 @@ export class PD120LineDecoder {
     if (Math.random() < 0.1) {  // Log ~10% of lines
       const mid = Math.floor(this.horizontalPixels / 2);
       console.log(`PD120 Line: Y[${mid}]=${yChannel[mid].toFixed(1)}, RY[${mid}]=${ryChannel[mid].toFixed(1)}, BY[${mid}]=${byChannel[mid].toFixed(1)} → RGB=(${pixels[mid*4]},${pixels[mid*4+1]},${pixels[mid*4+2]})`);
-      
+
       // Check channel ranges
       const yMin = Math.min(...yChannel);
       const yMax = Math.max(...yChannel);

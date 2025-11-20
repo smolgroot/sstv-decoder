@@ -56,7 +56,7 @@ export class SSTVDecoder {
     this.sampleRate = sampleRate;
     this.modeName = modeName;
     this.mode = SSTV_MODES[modeName];
-    
+
     // Initialize image data based on mode dimensions
     this.imageData = new Uint8ClampedArray(this.mode.width * this.mode.height * 4);
 
