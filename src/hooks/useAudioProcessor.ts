@@ -205,7 +205,7 @@ export function useAudioProcessor(mode: SSTVMode = 'ROBOT36') {
       animationFrameRef.current = null;
     }
 
-    // Stop decoder
+    // Stop decoder but keep the stats so the image persists
     if (decoderRef.current) {
       decoderRef.current.stop();
     }
@@ -213,7 +213,7 @@ export function useAudioProcessor(mode: SSTVMode = 'ROBOT36') {
     setState(prev => ({
       ...prev,
       isRecording: false,
-      stats: null,
+      // Keep stats so the decoded image remains visible
     }));
   };
 
@@ -223,6 +223,11 @@ export function useAudioProcessor(mode: SSTVMode = 'ROBOT36') {
       if (state.isRecording) {
         decoderRef.current.start();
       }
+      // Clear stats when explicitly resetting
+      setState(prev => ({
+        ...prev,
+        stats: null,
+      }));
     }
   };
 
