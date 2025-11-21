@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "playstore:setup": "bash scripts/setup-playstore.sh",
+    "playstore:init": "bubblewrap init --manifest https://sstv-decoder.vercel.app/manifest.json",
+    "playstore:keygen": "bubblewrap keygen",
+    "playstore:build": "bubblewrap build",
+    "playstore:install": "bubblewrap install",
+    "playstore:update": "bubblewrap update"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

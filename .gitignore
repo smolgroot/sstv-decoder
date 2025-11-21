@@ -48,3 +48,19 @@ robot36/
 .vscode/
 .idea/
 .github/
+
+# Bubblewrap / Play Store deployment
+twa-manifest.json
+*.keystore
+*.jks
+android.keystore
+*.pepk
+release.keystore
+debug.keystore
+keystore.properties
+app-release-bundle.aab
+app-release-signed.apk
+app-debug.apk
+/android/
+/.gradle/
+/local.properties
