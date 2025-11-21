@@ -27,7 +27,7 @@ describe('GoertzelFilter', () => {
   describe('Sample Processing', () => {
     test('processes samples without errors', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       expect(() => {
         for (let i = 0; i < 100; i++) {
           filter.processSample(Math.sin(i * 0.1));
@@ -37,7 +37,7 @@ describe('GoertzelFilter', () => {
 
     test('processes zero samples', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       expect(() => {
         filter.processSample(0);
         filter.processSample(0);
@@ -47,7 +47,7 @@ describe('GoertzelFilter', () => {
 
     test('handles extreme values', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       expect(() => {
         filter.processSample(1000);
         filter.processSample(-1000);
@@ -58,12 +58,12 @@ describe('GoertzelFilter', () => {
   describe('Magnitude Detection', () => {
     test('returns magnitude after processing', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       // Process some samples
       for (let i = 0; i < 100; i++) {
         filter.processSample(Math.sin(i * 0.1));
       }
-      
+
       const magnitude = filter.getMagnitude();
       expect(magnitude).toBeDefined();
       expect(typeof magnitude).toBe('number');
@@ -80,13 +80,13 @@ describe('GoertzelFilter', () => {
     test('detects target frequency signal', () => {
       const filter = new GoertzelFilter(sampleRate, 1200);
       const samplesPerCycle = sampleRate / 1200;
-      
+
       // Generate 1200 Hz signal
       for (let i = 0; i < 100; i++) {
         const sample = Math.sin(2 * Math.PI * i / samplesPerCycle);
         filter.processSample(sample);
       }
-      
+
       const magnitude = filter.getMagnitude();
       expect(magnitude).toBeGreaterThan(0);
     });
@@ -95,12 +95,12 @@ describe('GoertzelFilter', () => {
   describe('Reset Functionality', () => {
     test('resets internal state', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       // Process samples
       for (let i = 0; i < 100; i++) {
         filter.processSample(Math.sin(i * 0.1));
       }
-      
+
       filter.reset();
       const magnitude = filter.getMagnitude();
       expect(magnitude).toBe(0);
@@ -108,10 +108,10 @@ describe('GoertzelFilter', () => {
 
     test('can be used after reset', () => {
       const filter = new GoertzelFilter(sampleRate, targetFreq);
-      
+
       filter.processSample(1.0);
       filter.reset();
-      
+
       expect(() => {
         filter.processSample(1.0);
         filter.getMagnitude();
@@ -144,7 +144,7 @@ describe('FrequencyDetector', () => {
   describe('Sample Processing', () => {
     test('processes samples without errors', () => {
       const detector = new FrequencyDetector(sampleRate, frequencies);
-      
+
       expect(() => {
         for (let i = 0; i < 100; i++) {
           detector.processSample(Math.sin(i * 0.1));
@@ -154,7 +154,7 @@ describe('FrequencyDetector', () => {
 
     test('processes zero samples', () => {
       const detector = new FrequencyDetector(sampleRate, frequencies);
-      
+
       expect(() => {
         detector.processSample(0);
         detector.processSample(0);
@@ -165,12 +165,12 @@ describe('FrequencyDetector', () => {
   describe('Frequency Detection', () => {
     test('returns detected frequency', () => {
       const detector = new FrequencyDetector(sampleRate, frequencies);
-      
+
       // Process some samples
       for (let i = 0; i < 100; i++) {
         detector.processSample(Math.sin(i * 0.1));
       }
-      
+
       const freq = detector.getFrequency();
       expect(freq).toBeDefined();
       expect(typeof freq).toBe('number');
@@ -178,14 +178,14 @@ describe('FrequencyDetector', () => {
 
     test('detects strongest frequency', () => {
       const detector = new FrequencyDetector(sampleRate, [1000, 2000]);
-      
+
       // Generate 1000 Hz signal with higher amplitude
       const samplesPerCycle = sampleRate / 1000;
       for (let i = 0; i < 200; i++) {
         const sample = 2.0 * Math.sin(2 * Math.PI * i / samplesPerCycle);
         detector.processSample(sample);
       }
-      
+
       const freq = detector.getFrequency();
       // Should detect 1000 Hz or 0 (if no strong signal)
       expect(freq === 1000 || freq === 0 || freq === 2000).toBe(true);
@@ -195,11 +195,11 @@ describe('FrequencyDetector', () => {
   describe('Magnitude Retrieval', () => {
     test('returns magnitude for specific frequency', () => {
       const detector = new FrequencyDetector(sampleRate, frequencies);
-      
+
       for (let i = 0; i < 100; i++) {
         detector.processSample(Math.sin(i * 0.1));
       }
-      
+
       const magnitude = detector.getMagnitude(1200);
       expect(magnitude).toBeDefined();
       expect(typeof magnitude).toBe('number');
@@ -217,14 +217,14 @@ describe('FrequencyDetector', () => {
   describe('Reset Functionality', () => {
     test('resets all filters', () => {
       const detector = new FrequencyDetector(sampleRate, frequencies);
-      
+
       // Process samples
       for (let i = 0; i < 100; i++) {
         detector.processSample(Math.sin(i * 0.1));
       }
-      
+
       detector.reset();
-      
+
       // All magnitudes should be zero
       frequencies.forEach(freq => {
         expect(detector.getMagnitude(freq)).toBe(0);
@@ -299,7 +299,7 @@ describe('LowPassFilter', () => {
   describe('Sample Processing', () => {
     test('processes samples and returns values', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       const result = filter.process(1.0);
       expect(result).toBeDefined();
       expect(typeof result).toBe('number');
@@ -308,16 +308,16 @@ describe('LowPassFilter', () => {
 
     test('smooths step changes', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       // Start with zeros
       filter.process(0);
       filter.process(0);
-      
+
       // Step to 1.0
       const result1 = filter.process(1.0);
       const result2 = filter.process(1.0);
       const result3 = filter.process(1.0);
-      
+
       // Should gradually approach 1.0
       expect(result1).toBeGreaterThan(0);
       expect(result1).toBeLessThan(1.0);
@@ -328,17 +328,17 @@ describe('LowPassFilter', () => {
     test('higher alpha means faster response', () => {
       const filterSlow = new LowPassFilter(0.1);
       const filterFast = new LowPassFilter(0.9);
-      
+
       const resultSlow = filterSlow.process(1.0);
       const resultFast = filterFast.process(1.0);
-      
+
       // Fast filter should reach target quicker
       expect(resultFast).toBeGreaterThan(resultSlow);
     });
 
     test('handles negative values', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       const result = filter.process(-1.0);
       expect(result).toBeLessThan(0);
       expect(isFinite(result)).toBe(true);
@@ -346,10 +346,10 @@ describe('LowPassFilter', () => {
 
     test('handles zero values', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       filter.process(1.0);
       const result = filter.process(0.0);
-      
+
       expect(result).toBeGreaterThan(0);
       expect(result).toBeLessThan(1.0);
     });
@@ -358,10 +358,10 @@ describe('LowPassFilter', () => {
   describe('Reset Functionality', () => {
     test('resets to default value', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       filter.process(100);
       filter.reset();
-      
+
       const result = filter.process(1.0);
       // Should behave like first sample after reset
       expect(result).toBeGreaterThan(0);
@@ -370,10 +370,10 @@ describe('LowPassFilter', () => {
 
     test('resets to specified value', () => {
       const filter = new LowPassFilter(0.5);
-      
+
       filter.process(100);
       filter.reset(50);
-      
+
       const result = filter.process(50);
       // Should stay close to 50
       expect(result).toBeCloseTo(50, 0);
@@ -383,7 +383,7 @@ describe('LowPassFilter', () => {
   describe('Edge Cases', () => {
     test('handles very small alpha', () => {
       const filter = new LowPassFilter(0.001);
-      
+
       const result = filter.process(1.0);
       expect(isFinite(result)).toBe(true);
       expect(result).toBeGreaterThanOrEqual(0);
@@ -391,14 +391,14 @@ describe('LowPassFilter', () => {
 
     test('handles alpha close to 1', () => {
       const filter = new LowPassFilter(0.999);
-      
+
       const result = filter.process(1.0);
       expect(result).toBeCloseTo(1.0, 2);
     });
 
     test('handles extreme input values', () => {
       const filter = new LowPassFilter(0.1);
-      
+
       expect(() => {
         filter.process(1000000);
         filter.process(-1000000);

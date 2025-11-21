@@ -21,7 +21,7 @@ describe('PD120LineDecoder', () => {
     test('returns null for insufficient buffer', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const shortBuffer = new Float32Array(100);
-      
+
       const result = decoder.decodeScanLine(shortBuffer, 0, 0);
       expect(result).toBeNull();
     });
@@ -29,7 +29,7 @@ describe('PD120LineDecoder', () => {
     test('returns null when sync pulse is near end', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
-      
+
       const result = decoder.decodeScanLine(buffer, 29000, 0);
       expect(result).toBeNull();
     });
@@ -38,12 +38,12 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       // PD120 line is ~508ms, so need ~24400 samples at 48kHz
       const buffer = new Float32Array(30000);
-      
+
       // Fill with neutral gray values (0 normalized frequency)
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         expect(result.pixels).toBeDefined();
@@ -56,7 +56,7 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0.1);
       expect(result).not.toBeNull();
     });
@@ -65,7 +65,7 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, -0.1);
       expect(result).not.toBeNull();
     });
@@ -76,9 +76,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         expect(result.width).toBe(640);
@@ -89,9 +89,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         expect(result.height).toBe(2);
@@ -104,9 +104,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         expect(result.pixels).toBeInstanceOf(Uint8ClampedArray);
@@ -118,9 +118,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         for (let i = 0; i < result.pixels.length; i++) {
@@ -134,9 +134,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         expect(result.isOddLine).toBe(false);
@@ -148,12 +148,12 @@ describe('PD120LineDecoder', () => {
     test('produces valid RGB colors from gray input', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
-      
+
       // Fill with neutral gray (0 = 1900 Hz center frequency)
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         // Check first pixel RGB values
@@ -161,7 +161,7 @@ describe('PD120LineDecoder', () => {
         const g = result.pixels[1];
         const b = result.pixels[2];
         const a = result.pixels[3];
-        
+
         expect(a).toBe(255); // Alpha should be 255
         expect(r).toBeGreaterThanOrEqual(0);
         expect(g).toBeGreaterThanOrEqual(0);
@@ -173,9 +173,9 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result).not.toBeNull();
       if (result !== null) {
         // Check every 4th byte (alpha channel)
@@ -190,7 +190,7 @@ describe('PD120LineDecoder', () => {
     test('handles empty buffer gracefully', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
       expect(result).toBeNull();
     });
@@ -199,7 +199,7 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(100);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
       expect(result).not.toBeNull();
     });
@@ -208,7 +208,7 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(-100);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
       expect(result).not.toBeNull();
     });
@@ -217,7 +217,7 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       expect(() => {
         decoder.decodeScanLine(buffer, 0, 0);
         decoder.decodeScanLine(buffer, 100, 0);
@@ -230,20 +230,20 @@ describe('PD120LineDecoder', () => {
     test('scales timing with sample rate', () => {
       const decoder44k = new PD120LineDecoder(44100);
       const decoder48k = new PD120LineDecoder(48000);
-      
+
       // Buffer sizes scale with sample rate
       const buffer44k = new Float32Array(27500); // ~508ms at 44.1kHz
       const buffer48k = new Float32Array(30000); // ~508ms at 48kHz
-      
+
       buffer44k.fill(0);
       buffer48k.fill(0);
-      
+
       const result44k = decoder44k.decodeScanLine(buffer44k, 0, 0);
       const result48k = decoder48k.decodeScanLine(buffer48k, 0, 0);
-      
+
       expect(result44k).not.toBeNull();
       expect(result48k).not.toBeNull();
-      
+
       if (result44k !== null && result48k !== null) {
         // Both should produce same dimensions
         expect(result44k.width).toBe(result48k.width);
@@ -257,13 +257,13 @@ describe('PD120LineDecoder', () => {
       const decoder = new PD120LineDecoder(sampleRate);
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       const result1 = decoder.decodeScanLine(buffer, 0, 0);
       const result2 = decoder.decodeScanLine(buffer, 0, 0);
-      
+
       expect(result1).not.toBeNull();
       expect(result2).not.toBeNull();
-      
+
       if (result1 !== null && result2 !== null) {
         expect(result1.width).toBe(result2.width);
         expect(result1.height).toBe(result2.height);
