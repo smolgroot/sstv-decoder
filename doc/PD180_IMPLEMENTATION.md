@@ -110,10 +110,10 @@ for (let i = 0; i < 640; i++) {
   const vAvg = sample(vAvgChannel, i);   // R-Y (shared)
   const uAvg = sample(uAvgChannel, i);   // B-Y (shared)
   const yOdd = sample(yOddChannel, i);
-  
+
   // Even row uses Y-even + shared chroma
   const rgbEven = yuv2rgb(yEven, vAvg, uAvg);
-  
+
   // Odd row uses Y-odd + same shared chroma
   const rgbOdd = yuv2rgb(yOdd, vAvg, uAvg);
 }
@@ -243,7 +243,7 @@ PD180 mode has been successfully implemented as a high-quality alternative to PD
 
 The decoder now supports three complementary SSTV modes:
 - **Robot36**: Fast (36s) - Quick QSOs
-- **PD120**: Balanced (2m 6s) - ISS SSTV standard  
+- **PD120**: Balanced (2m 6s) - ISS SSTV standard
 - **PD180**: Quality (3m 6s) - Maximum fidelity
 
 This gives users full flexibility to choose the optimal mode for their specific use case, propagation conditions, and time constraints.
