@@ -253,7 +253,7 @@ All modes are real-time capable on modern hardware.
 **Three modes, three purposes:**
 
 - **Robot36**: Fast and efficient (36s)
-- **PD120**: Balanced standard (2m 6s) 
+- **PD120**: Balanced standard (2m 6s)
 - **PD180**: Quality champion (3m 6s)
 
 Choose based on your time constraints, signal conditions, and quality requirements!
