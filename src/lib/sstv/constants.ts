@@ -49,6 +49,23 @@ export const SSTV_MODES = {
     colorScanTimes: [121.6, 121.6, 121.6], // Y, R, B channels all 121.6ms
     colorOrder: ['G', 'R', 'B'], // Actually Y, R, B for PD modes
   },
+  PD180: {
+    name: 'PD 180',
+    visCode: 96,
+    width: 640,
+    height: 496,
+    // PD180 line format: sync(20) + porch(2.08) + Y-even(182.4) + V-avg(182.4) + U-avg(182.4) + Y-odd(182.4) = 751.68ms per line
+    // Higher quality than PD120: 286µs per pixel vs 190µs per pixel
+    scanTime: 751.68,
+    syncPulse: 20,
+    syncPorch: 2.08,
+    porchFreq: 1500,
+    separatorPulse: 0, // PD180 uses dual-luminance, no separators
+    separatorPulses: [], // No separators in PD180
+    colorScanTime: 182.4,
+    colorScanTimes: [182.4, 182.4, 182.4, 182.4], // Y-even, V-avg, U-avg, Y-odd channels all 182.4ms
+    colorOrder: ['G', 'R', 'B'], // Actually Y, V, U for PD modes (dual-luminance)
+  },
 } as const;
 
 // Frequency constants

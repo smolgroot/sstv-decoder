@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Fab from '@mui/material/Fab';
 import SettingsIcon from '@mui/icons-material/Settings';
 
-export type SSTVMode = 'ROBOT36' | 'PD120';
+export type SSTVMode = 'ROBOT36' | 'PD120' | 'PD180';
 
 interface SettingsPanelProps {
   currentMode: SSTVMode;
@@ -24,7 +24,12 @@ export default function SettingsPanel({ currentMode, onModeChange, disabled = fa
     {
       id: 'PD120',
       name: 'PD 120',
-      description: '640×496 • High resolution (496ms/line) • Sequential RGB',
+      description: '640×496 • High resolution (508ms/line) • Dual-luminance',
+    },
+    {
+      id: 'PD180',
+      name: 'PD 180',
+      description: '640×496 • Highest quality (752ms/line) • Dual-luminance',
     },
   ];
 
