@@ -2,13 +2,13 @@
  * Scottie S1 Line Decoder
  * Decodes a single Scottie S1 scan line using RGB sequential format
  * Unlike YUV modes (Robot36, PD120), Scottie transmits R, G, B components directly
- * 
+ *
  * Key Features:
  * - RGB sequential encoding (no YUV conversion needed)
  * - Special first sync pulse handling (longer first line)
  * - Order: sync → R → separator → G → separator → B
  * - First line has unusual sequence: sync → G → B → sync → R
- * 
+ *
  * Based on xdsopl/robot36 RGBDecoder.java and RGBModes.Scottie()
  */
 
@@ -28,13 +28,13 @@ export class ScottieS1LineDecoder {
   private readonly verticalPixels = 256;
   private readonly scanLineSamples: number;
   private readonly firstSyncPulseSamples: number;
-  
+
   // Channel timing (all in samples)
   private readonly channelSamples: number; // 138.24ms per channel
   private readonly redSamples: number;
   private readonly greenSamples: number;
   private readonly blueSamples: number;
-  
+
   // Begin positions for R, G, B channels
   private readonly beginSamples: number;
   private readonly redBeginSamples: number;
@@ -47,21 +47,21 @@ export class ScottieS1LineDecoder {
     const syncPulseSeconds = 0.009; // 9ms sync pulse
     const separatorSeconds = 0.0015; // 1.5ms separator
     const channelSeconds = 0.13824; // 138.24ms per color channel (R, G, B)
-    
+
     // First line is special: sync(9) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) + sync(9) + sep(1.5) + R(138.24)
     const firstSyncPulseSeconds = syncPulseSeconds + 2 * (separatorSeconds + channelSeconds);
-    
+
     // Regular scan line: sync(9) + R(138.24) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) = 428.22ms
     const scanLineSeconds = syncPulseSeconds + 3 * (channelSeconds + separatorSeconds);
 
     this.scanLineSamples = Math.round(scanLineSeconds * sampleRate);
     this.firstSyncPulseSamples = Math.round(firstSyncPulseSeconds * sampleRate);
     this.channelSamples = Math.round(channelSeconds * sampleRate);
-    
+
     // Scottie S1 transmission order: Green → Blue → [SYNC] → Red
     // The "negative timing" means green and blue are transmitted BEFORE the sync pulse!
     // This is unusual but correct according to RGBModes.Scottie()
-    
+
     // From RGBModes.Scottie() - exact timing relative to sync pulse:
     const blueEndSeconds = -syncPulseSeconds;                     // Blue ends 9ms before sync
     const blueBeginSeconds = blueEndSeconds - channelSeconds;     // Blue: -147.24ms to -9ms
@@ -69,23 +69,23 @@ export class ScottieS1LineDecoder {
     const greenBeginSeconds = greenEndSeconds - channelSeconds;   // Green: -286.98ms to -148.74ms
     const redBeginSeconds = separatorSeconds;                      // Red starts 1.5ms after sync
     const redEndSeconds = redBeginSeconds + channelSeconds;       // Red: +1.5ms to +139.74ms
-    
+
     // Calculate sample positions
     // beginSamples is the earliest start point (green channel, negative value)
     const beginSeconds = greenBeginSeconds;
     this.beginSamples = Math.round(beginSeconds * sampleRate);
-    
+
     // endSamples is the latest end point (red channel)
     const endSeconds = redEndSeconds;
     this.endSamples = Math.round(endSeconds * sampleRate);
-    
+
     // Calculate channel positions relative to beginSamples offset
     this.redBeginSamples = Math.round(redBeginSeconds * sampleRate) - this.beginSamples;
     this.redSamples = Math.round((redEndSeconds - redBeginSeconds) * sampleRate);
-    
+
     this.greenBeginSamples = Math.round(greenBeginSeconds * sampleRate) - this.beginSamples;
     this.greenSamples = Math.round((greenEndSeconds - greenBeginSeconds) * sampleRate);
-    
+
     this.blueBeginSamples = Math.round(blueBeginSeconds * sampleRate) - this.beginSamples;
     this.blueSamples = Math.round((blueEndSeconds - blueBeginSeconds) * sampleRate);
 

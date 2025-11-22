@@ -195,11 +195,11 @@ export class SSTVDecoder {
     const hasNegativeTiming = 'getBeginSamples' in this.lineDecoder;
     const beginOffset = hasNegativeTiming ? (this.lineDecoder as any).getBeginSamples() : 0;
     const endOffset = hasNegativeTiming ? (this.lineDecoder as any).getEndSamples() : lineLength;
-    
+
     // Calculate total buffer needed including negative timing
     const totalSamples = hasNegativeTiming ? endOffset - beginOffset : lineLength;
     const extractStart = hasNegativeTiming ? (startPos + beginOffset + this.bufferSize) % this.bufferSize : startPos;
-    
+
     console.log(`🔍 Decoder timing: beginOffset=${beginOffset}, endOffset=${endOffset}, totalSamples=${totalSamples}`);
 
     // Extract DEMODULATED line samples into contiguous buffer

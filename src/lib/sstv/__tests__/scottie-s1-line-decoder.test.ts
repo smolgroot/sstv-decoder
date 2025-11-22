@@ -20,34 +20,34 @@ describe('ScottieS1LineDecoder', () => {
   describe('Timing Calculations', () => {
     test('calculates correct scan line duration', () => {
       const decoder = new ScottieS1LineDecoder(sampleRate);
-      
+
       // Scottie S1 scan line: 428.22ms total (after first line)
       // sync(9) + R(138.24) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) = 428.22ms
       // But green/blue are transmitted BEFORE sync (negative timing)
       // So we need extra buffer space
       const buffer = new Float32Array(50000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 20000, 0); // Large offset for negative timing
       expect(result).not.toBeNull();
     });
 
     test('first sync pulse is longer', () => {
       const decoder = new ScottieS1LineDecoder(sampleRate);
-      
+
       // First line: sync(9) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) + sync(9) + sep(1.5) + R(138.24) = 438.72ms
       const firstSyncSamples = decoder.getFirstSyncPulseSamples();
       const expectedFirstSync = Math.round((0.009 + 2 * (0.0015 + 0.13824)) * sampleRate);
-      
+
       expect(firstSyncSamples).toBeCloseTo(expectedFirstSync, 0);
     });
 
     test('handles 44.1kHz sample rate timing', () => {
       const decoder44k = new ScottieS1LineDecoder(44100);
-      
+
       const buffer = new Float32Array(30000);
       buffer.fill(0);
-      
+
       expect(() => {
         decoder44k.decodeScanLine(buffer, 10000, 0);
       }).not.toThrow();
@@ -55,10 +55,10 @@ describe('ScottieS1LineDecoder', () => {
 
     test('handles 96kHz sample rate timing', () => {
       const decoder96k = new ScottieS1LineDecoder(96000);
-      
+
       const buffer = new Float32Array(60000);
       buffer.fill(0);
-      
+
       expect(() => {
         decoder96k.decodeScanLine(buffer, 20000, 0);
       }).not.toThrow();
@@ -463,7 +463,7 @@ describe('ScottieS1LineDecoder', () => {
       // The test verifies that the decoder processes RGB channels
       const decoder = new ScottieS1LineDecoder(sampleRate);
       expect(decoder).toBeDefined();
-      
+
       // Scottie decoders don't need YUV conversion methods
       // This is validated by the successful RGB decoding tests above
     });
