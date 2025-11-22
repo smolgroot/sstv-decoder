@@ -21,7 +21,7 @@ export default function OfflinePage() {
         </div>
 
         <h1 className="text-3xl font-bold mb-4 text-[#c9d1d9]">
-          You're Offline
+          You&apos;re Offline
         </h1>
 
         <p className="text-[#8b949e] mb-6">
@@ -30,7 +30,7 @@ export default function OfflinePage() {
 
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 mb-6">
           <h2 className="text-sm font-semibold text-[#c9d1d9] mb-2">
-            Once you're back online:
+            Once you&apos;re back online:
           </h2>
           <ul className="text-sm text-[#8b949e] text-left space-y-2">
             <li className="flex items-start">

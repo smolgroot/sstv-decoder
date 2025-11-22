@@ -75,7 +75,7 @@ const withPWA = require('next-pwa')({
     // Catch-all for same-origin - cache first for maximum offline support
     {
       urlPattern: ({ url, request }) => {
-        return url.origin === self.location.origin && 
+        return url.origin === self.location.origin &&
                request.destination !== 'document';
       },
       handler: 'CacheFirst',

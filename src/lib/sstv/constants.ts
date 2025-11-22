@@ -33,6 +33,23 @@ export const SSTV_MODES = {
     colorScanTimes: [88, 44], // Y=88ms, then ONE chrominance channel=44ms (alternates R-Y/B-Y)
     colorOrder: ['G', 'R', 'B'], // Not used for Robot36 (it's interlaced)
   },
+  ROBOT72: {
+    name: 'Robot 72',
+    visCode: 12,
+    width: 320,
+    height: 240,
+    // Robot72 line: sync(9) + syncPorch(3) + Y(138) + separator(4.5) + porch(1.5) + V(69) + separator(4.5) + porch(1.5) + U(69) = 300ms
+    // Sequential YUV encoding (no interlacing) - better color fidelity than Robot36
+    scanTime: 300,
+    syncPulse: 9,
+    syncPorch: 3,
+    porchFreq: 1500,
+    separatorPulse: 4.5,
+    separatorPulses: [4.5, 4.5], // Two separators (after Y and after V)
+    colorScanTime: 138,
+    colorScanTimes: [138, 69, 69], // Y=138ms, V=69ms, U=69ms (all three channels per line)
+    colorOrder: ['G', 'R', 'B'], // Actually Y, V (R-Y), U (B-Y)
+  },
   PD120: {
     name: 'PD 120',
     visCode: 95,
