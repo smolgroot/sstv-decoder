@@ -48,6 +48,32 @@ describe('SSTV Mode Constants', () => {
     });
   });
 
+  describe('PD160 Mode', () => {
+    test('has correct basic specifications', () => {
+      expect(SSTV_MODES.PD160.name).toBe('PD 160');
+      expect(SSTV_MODES.PD160.width).toBe(512);
+      expect(SSTV_MODES.PD160.height).toBe(400);
+      expect(SSTV_MODES.PD160.visCode).toBe(98);
+    });
+
+    test('has correct timing specifications', () => {
+      expect(SSTV_MODES.PD160.scanTime).toBeCloseTo(804.416, 2);
+      expect(SSTV_MODES.PD160.syncPulse).toBe(20);
+      expect(SSTV_MODES.PD160.syncPorch).toBe(2.08);
+    });
+
+    test('has correct channel timing', () => {
+      expect(SSTV_MODES.PD160.colorScanTime).toBeCloseTo(195.584, 2);
+      expect(SSTV_MODES.PD160.colorScanTimes).toHaveLength(4);
+      expect(SSTV_MODES.PD160.colorScanTimes?.[0]).toBeCloseTo(195.584, 2);
+    });
+
+    test('pixel dwell time is approximately 382µs', () => {
+      const pixelTime = SSTV_MODES.PD160.colorScanTime / SSTV_MODES.PD160.width;
+      expect(pixelTime).toBeCloseTo(0.382, 3); // 195.584ms / 512 = 0.382ms = 382µs
+    });
+  });
+
   describe('PD180 Mode', () => {
     test('has correct basic specifications', () => {
       expect(SSTV_MODES.PD180.name).toBe('PD 180');
@@ -100,27 +126,47 @@ describe('SSTV Mode Constants', () => {
   describe('Mode Comparison', () => {
     test('PD modes have longer sync pulses than Robot36', () => {
       expect(SSTV_MODES.PD120.syncPulse).toBeGreaterThan(SSTV_MODES.ROBOT36.syncPulse);
+      expect(SSTV_MODES.PD160.syncPulse).toBeGreaterThan(SSTV_MODES.ROBOT36.syncPulse);
       expect(SSTV_MODES.PD180.syncPulse).toBeGreaterThan(SSTV_MODES.ROBOT36.syncPulse);
       expect(SSTV_MODES.PD120.syncPulse).toBe(SSTV_MODES.PD180.syncPulse);
+      expect(SSTV_MODES.PD160.syncPulse).toBe(SSTV_MODES.PD180.syncPulse);
     });
 
     test('PD modes have higher resolution than Robot36', () => {
       const robot36Pixels = SSTV_MODES.ROBOT36.width * SSTV_MODES.ROBOT36.height;
       const pd120Pixels = SSTV_MODES.PD120.width * SSTV_MODES.PD120.height;
+      const pd160Pixels = SSTV_MODES.PD160.width * SSTV_MODES.PD160.height;
       const pd180Pixels = SSTV_MODES.PD180.width * SSTV_MODES.PD180.height;
 
       expect(pd120Pixels).toBeGreaterThan(robot36Pixels);
+      expect(pd160Pixels).toBeGreaterThan(robot36Pixels);
       expect(pd180Pixels).toBeGreaterThan(robot36Pixels);
       expect(pd120Pixels).toBe(pd180Pixels); // Same resolution
     });
 
-    test('transmission times increase: Robot36 < PD120 < PD180', () => {
+    test('transmission times increase: Robot36 < PD120 < PD160 < PD180', () => {
       const robot36Time = SSTV_MODES.ROBOT36.scanTime * SSTV_MODES.ROBOT36.height;
       const pd120Time = SSTV_MODES.PD120.scanTime * (SSTV_MODES.PD120.height / 2); // 2 rows per scan
+      const pd160Time = SSTV_MODES.PD160.scanTime * (SSTV_MODES.PD160.height / 2); // 2 rows per scan
       const pd180Time = SSTV_MODES.PD180.scanTime * (SSTV_MODES.PD180.height / 2); // 2 rows per scan
 
       expect(pd120Time).toBeGreaterThan(robot36Time);
-      expect(pd180Time).toBeGreaterThan(pd120Time);
+      expect(pd160Time).toBeGreaterThan(pd120Time);
+      expect(pd180Time).toBeGreaterThan(pd160Time);
+    });
+
+    test('PD160 is balanced between PD120 and PD180', () => {
+      // PD160 scan time should be between PD120 and PD180
+      expect(SSTV_MODES.PD160.scanTime).toBeGreaterThan(SSTV_MODES.PD120.scanTime);
+      expect(SSTV_MODES.PD160.scanTime).toBeGreaterThan(SSTV_MODES.PD180.scanTime);
+      
+      // PD160 pixel dwell time should be between PD120 and PD180
+      const pd120Dwell = SSTV_MODES.PD120.colorScanTime / SSTV_MODES.PD120.width;
+      const pd160Dwell = SSTV_MODES.PD160.colorScanTime / SSTV_MODES.PD160.width;
+      const pd180Dwell = SSTV_MODES.PD180.colorScanTime / SSTV_MODES.PD180.width;
+      
+      expect(pd160Dwell).toBeGreaterThan(pd120Dwell);
+      expect(pd160Dwell).toBeGreaterThan(pd180Dwell);
     });
   });
 });

@@ -8,7 +8,7 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 ## Features
 
-- **Multi-Mode Support**: Robot36 Color (320×240) and PD120 (640×496) with manual mode selection
+- **Multi-Mode Support**: Robot36 Color (320×240), PD120 (640×496), PD160 (512×400), and PD180 (640×496) with manual mode selection
 - **Real-time Audio Processing**: Captures microphone input using Web Audio API (auto-detects 44.1 kHz or 48 kHz)
 - **Professional DSP Chain**:
   - FM demodulation with complex baseband conversion
@@ -30,6 +30,7 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 |------|------------|------------|-----------|------------|----------|---------|---------------|
 | **Robot36 Color** | 320×240 | 9ms | ~150ms | ~36s | 8 | ✅ Implemented | [ROBOT36.md](./doc/ROBOT36.md) |
 | **PD120** | 640×496 | 20ms | ~508ms | ~2m 6s | 95 | ✅ Implemented | [PD120.md](./doc/PD120.md) |
+| **PD160** | 512×400 | 20ms | ~804ms | ~2m 41s | 98 | ✅ Implemented | [PD160.md](./doc/PD160.md) |
 | **PD180** | 640×496 | 20ms | ~752ms | ~3m 6s | 96 | ✅ Implemented | [PD180.md](./doc/PD180.md) |
 
 ### Future Modes (Planned)
@@ -46,8 +47,6 @@ The decoder architecture supports adding these modes in future updates:
 | **Martin M2** | 320×256 | 5ms | ~226ms | ~58s | 40 | Medium (GBR sequential) |
 | **PD50** | 320×256 | 20ms | ~406ms | ~1m 44s | 93 | Low (dual-luma like PD120) |
 | **PD90** | 320×256 | 20ms | ~754ms | ~3m 13s | 99 | Low (dual-luma like PD120) |
-| **PD160** | 512×400 | 20ms | ~838ms | ~5m 35s | 98 | Low (dual-luma like PD120) |
-
 | **PD240** | 640×496 | 20ms | ~1018ms | ~4m 13s | 97 | Low (dual-luma like PD120) |
 | **PD290** | 800×616 | 20ms | ~954ms | ~4m 54s | 94 | Low (dual-luma like PD120) |
 | **Wraase SC2-180** | 320×256 | 5ms | ~734ms | ~3m 8s | 55 | Medium (RGB sequential) |
@@ -61,6 +60,7 @@ The decoder architecture supports adding these modes in future updates:
 
 **For High Quality** (1-3 minutes):
 - **PD120**: 2m 6s, 640×496, excellent for ISS SSTV events
+- **PD160**: 2m 41s, 512×400, balanced quality and time
 - **Scottie S1**: 1m 50s, RGB sequential, clean colors
 - **PD180**: 3m 9s, 640×496, extended transmission
 
@@ -149,10 +149,11 @@ npm start
 
 ## How to Use
 
-1. **Select Mode** (Optional): Click the settings icon (bottom-right) to choose between Robot36, PD120, or PD180
+1. **Select Mode** (Optional): Click the settings icon (bottom-right) to choose between Robot36, PD120, PD160, or PD180
    - Robot36: 320×240, fast decode (~36 seconds)
    - PD120: 640×496, high resolution (~2 minutes), used for ISS SSTV
-   - PD180: 640×496, highest quality (~3 minutes), better SNR
+   - PD160: 512×400, balanced mode (~2m 41s), good SNR
+   - PD180: 640×496, highest quality (~3 minutes), best SNR
 2. **Start Decoding**: Click "Start Decoding" to begin capturing audio from your microphone
 3. **Grant Microphone Permission**: Allow the browser to access your microphone when prompted
 4. **Play SSTV Signal**: Play an SSTV signal near your microphone (from radio, audio file, signal generator, etc.)
@@ -211,6 +212,22 @@ npm start
 - **Total Scan Lines**: 248 (produces 496 pixel rows, 248 × 2)
 - **Encoding**: 2 rows per scan line (shared chroma between rows)
 
+### PD160 Mode Specifications
+
+- **Resolution**: 512×400 pixels
+- **Color Format**: Dual-luminance YUV (Y-even + V-avg + U-avg + Y-odd)
+- **Scan Line Duration**: ~804ms per scan line
+- **Sync Pulse**: 20ms at 1200 Hz
+- **Sync Porch**: 2.08ms at 1500 Hz
+- **Y-even Channel**: 195.584ms (luminance for even row)
+- **V-avg Channel**: 195.584ms (R-Y chroma, shared)
+- **U-avg Channel**: 195.584ms (B-Y chroma, shared)
+- **Y-odd Channel**: 195.584ms (luminance for odd row)
+- **Pixel Dwell Time**: 382µs per pixel (2× longer than PD120)
+- **SNR Improvement**: ~3.0 dB better than PD120
+- **Total Scan Lines**: 200 (produces 400 pixel rows, 200 × 2)
+- **Encoding**: 2 rows per scan line (shared chroma between rows)
+
 ### PD180 Mode Specifications
 
 - **Resolution**: 640×496 pixels
@@ -258,11 +275,12 @@ src/
 │   └── useAudioProcessor.ts    # Web Audio API integration (mode-aware)
 └── lib/
     └── sstv/
-        ├── constants.ts             # SSTV mode specifications (Robot36, PD120, PD180)
+        ├── constants.ts             # SSTV mode specifications (Robot36, PD120, PD160, PD180)
         ├── decoder.ts               # Main decoder orchestration (multi-mode)
         ├── sync-detector.ts         # Sync pulse detection (9ms/20ms)
         ├── robot36-line-decoder.ts  # Robot36 interlaced YUV decoder
         ├── pd120-line-decoder.ts    # PD120 dual-luminance decoder
+        ├── pd160-line-decoder.ts    # PD160 dual-luminance decoder (balanced mode)
         ├── pd180-line-decoder.ts    # PD180 dual-luminance decoder (high quality)
         ├── fm-demodulator.ts        # DSP primitives (FM demod, filters, EMA)
         └── dsp.ts                   # Legacy utilities (deprecated)
@@ -270,6 +288,7 @@ src/
 doc/
 ├── ROBOT36.md                  # Robot36 technical specification
 ├── PD120.md                    # PD120 technical specification
+├── PD160.md                    # PD160 technical specification
 ├── PD180.md                    # PD180 technical specification
 └── ARCHITECTURE.md             # Overall system architecture
 ```
