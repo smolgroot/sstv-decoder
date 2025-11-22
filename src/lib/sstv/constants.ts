@@ -101,6 +101,24 @@ export const SSTV_MODES = {
     colorScanTimes: [182.4, 182.4, 182.4, 182.4], // Y-even, V-avg, U-avg, Y-odd channels all 182.4ms
     colorOrder: ['G', 'R', 'B'], // Actually Y, V, U for PD modes (dual-luminance)
   },
+  SCOTTIE_S1: {
+    name: 'Scottie S1',
+    visCode: 60,
+    width: 320,
+    height: 256,
+    // Scottie S1 line format (after first line): sync(9) + R(138.24) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) = 428.22ms
+    // First line is special: sync(9) + sep(1.5) + G(138.24) + sep(1.5) + B(138.24) + sync(9) + sep(1.5) + R(138.24) = 438.72ms
+    // RGB sequential encoding (no YUV conversion needed)
+    scanTime: 428.22,
+    syncPulse: 9,
+    syncPorch: 0, // Scottie uses separator, not sync porch
+    porchFreq: 1500,
+    separatorPulse: 1.5,
+    separatorPulses: [1.5, 1.5], // Two separators (after R and after G)
+    colorScanTime: 138.24,
+    colorScanTimes: [138.24, 138.24, 138.24], // R, G, B channels all 138.24ms
+    colorOrder: ['R', 'G', 'B'], // RGB sequential (sync-R-sep-G-sep-B)
+  },
 } as const;
 
 // Frequency constants
