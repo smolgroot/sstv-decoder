@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import SSTVDecoder from "@/components/SSTVDecoder";
 
-export type SSTVMode = 'ROBOT36' | 'PD120' | 'PD160' | 'PD180';
+export type SSTVMode = 'ROBOT36' | 'ROBOT72' | 'PD120' | 'PD160' | 'PD180';
 
 export default function Home() {
   const [selectedMode, setSelectedMode] = useState<SSTVMode>('ROBOT36');
@@ -13,6 +13,8 @@ export default function Home() {
     switch (selectedMode) {
       case 'ROBOT36':
         return { name: 'Robot36 Mode', resolution: '320×240 px' };
+      case 'ROBOT72':
+        return { name: 'Robot72 Mode', resolution: '320×240 px' };
       case 'PD120':
         return { name: 'PD120 Mode', resolution: '640×496 px' };
       case 'PD160':
