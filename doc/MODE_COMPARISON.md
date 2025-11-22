@@ -221,30 +221,30 @@ All modes are real-time capable on modern hardware.
 
 ```
 ╔═══════════════════════════════════════════════════════════╗
-║  CHOOSE ROBOT36 WHEN:                                     ║
-║  ✓ Time is limited (< 1 minute)                          ║
-║  ✓ Fast QSO/contact                                       ║
-║  ✓ Signal quality check                                   ║
-║  ✓ Lower resolution acceptable                            ║
+║  CHOOSE ROBOT36 WHEN:                                               ║
+║  ✓ Time is limited (< 1 minute)                                     ║
+║  ✓ Fast QSO/contact                                                 ║
+║  ✓ Signal quality check                                             ║
+║  ✓ Lower resolution acceptable                                      ║
 ╚═══════════════════════════════════════════════════════════╝
 
 ╔═══════════════════════════════════════════════════════════╗
-║  CHOOSE PD120 WHEN:                                       ║
-║  ✓ ISS SSTV events (current standard)                    ║
-║  ✓ Good balance of speed and quality                     ║
-║  ✓ High resolution needed                                 ║
-║  ✓ Moderate time available (2-3 minutes)                 ║
-║  ✓ Mobile operation                                       ║
+║  CHOOSE PD120 WHEN:                                                 ║
+║  ✓ ISS SSTV events (current standard)                               ║
+║  ✓ Good balance of speed and quality                                ║
+║  ✓ High resolution needed                                           ║
+║  ✓ Moderate time available (2-3 minutes)                            ║
+║  ✓ Mobile operation                                                 ║
 ╚═══════════════════════════════════════════════════════════╝
 
 ╔═══════════════════════════════════════════════════════════╗
-║  CHOOSE PD180 WHEN:                                       ║
-║  ✓ Maximum quality desired                                ║
-║  ✓ Weak signal conditions                                 ║
-║  ✓ Time available (3+ minutes)                           ║
-║  ✓ Gallery-quality images                                 ║
-║  ✓ Commemorative/special events                           ║
-║  ✓ Recording from audio files                             ║
+║  CHOOSE PD180 WHEN:                                                 ║
+║  ✓ Maximum quality desired                                          ║
+║  ✓ Weak signal conditions                                           ║
+║  ✓ Time available (3+ minutes)                                      ║
+║  ✓ Gallery-quality images                                           ║
+║  ✓ Commemorative/special events                                     ║
+║  ✓ Recording from audio files                                       ║
 ╚═══════════════════════════════════════════════════════════╝
 ```
 

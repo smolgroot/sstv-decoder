@@ -90,6 +90,29 @@ The decoder architecture supports adding these modes in future updates:
 - **Canvas API**: Progressive image rendering
 - **Tailwind CSS**: Utility-first styling
 
+## Testing
+
+The project includes comprehensive unit tests for the core SSTV decoding algorithms.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+### Test Framework
+
+- **Jest** - Test runner with TypeScript support
+- **@testing-library/react** - React component testing utilities
+- **jsdom** - DOM environment for tests
+
 ## Getting Started
 
 ### Prerequisites
@@ -336,6 +359,17 @@ This implementation closely follows the [Robot36 Android app](https://github.com
 - [ ] **Waterfall Display**: Full spectrogram history
 - [ ] **Multi-image Gallery**: Store and compare multiple decoded images
 - [ ] **Export Metadata**: Include mode, timestamp, signal quality in saved files
+
+## Contributing
+
+I welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+
+- Setting up your development environment
+- Creating feature branches
+- Writing and running tests
+- Code quality standards
+- Submitting pull requests
+- Adding new SSTV modes
 
 ## License
 
