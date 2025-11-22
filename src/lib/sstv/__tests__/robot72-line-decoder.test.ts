@@ -20,26 +20,26 @@ describe('Robot72LineDecoder', () => {
   describe('Timing Calculations', () => {
     test('calculates correct scan line duration', () => {
       const decoder = new Robot72LineDecoder(sampleRate);
-      
+
       // Robot72 scan line: 300ms total
       // sync(9) + porch(3) + Y(138) + sep(4.5) + porch(1.5) + V(69) + sep(4.5) + porch(1.5) + U(69) = 300ms
       const expectedSamples = Math.round(0.300 * sampleRate);
-      
+
       // Access private scanLineSamples through decoding
       const buffer = new Float32Array(expectedSamples + 1000);
       buffer.fill(0);
-      
+
       const result = decoder.decodeScanLine(buffer, 0, 0);
       expect(result).not.toBeNull();
     });
 
     test('handles 44.1kHz sample rate timing', () => {
       const decoder44k = new Robot72LineDecoder(44100);
-      
+
       // Should handle different sample rate without errors
       const buffer = new Float32Array(20000);
       buffer.fill(0);
-      
+
       expect(() => {
         decoder44k.decodeScanLine(buffer, 0, 0);
       }).not.toThrow();
@@ -47,10 +47,10 @@ describe('Robot72LineDecoder', () => {
 
     test('handles 96kHz sample rate timing', () => {
       const decoder96k = new Robot72LineDecoder(96000);
-      
+
       const buffer = new Float32Array(40000);
       buffer.fill(0);
-      
+
       expect(() => {
         decoder96k.decodeScanLine(buffer, 0, 0);
       }).not.toThrow();

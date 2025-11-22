@@ -41,7 +41,7 @@ export class Robot72LineDecoder {
     const chrominanceSeconds = 0.069;    // 69ms for each chroma channel (V and U)
 
     // Total scan line: sync(9) + porch(3) + Y(138) + sep(4.5) + porch(1.5) + V(69) + sep(4.5) + porch(1.5) + U(69) = 300ms
-    const scanLineSeconds = syncPulseSeconds + syncPorchSeconds + luminanceSeconds + 
+    const scanLineSeconds = syncPulseSeconds + syncPorchSeconds + luminanceSeconds +
                            2 * (separatorSeconds + porchSeconds + chrominanceSeconds);
 
     this.scanLineSamples = Math.round(scanLineSeconds * sampleRate);

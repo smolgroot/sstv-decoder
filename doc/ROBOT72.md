@@ -42,11 +42,11 @@ Robot72 uses YUV color encoding (ITU-R BT.601):
 - **Y (Luminance)**: Brightness information (0-1 normalized)
   - 1500 Hz = black (0%)
   - 2300 Hz = white (100%)
-  
+
 - **V (R-Y)**: Red-minus-luminance chrominance
   - 1500 Hz = minimum (-50%)
   - 2300 Hz = maximum (+50%)
-  
+
 - **U (B-Y)**: Blue-minus-luminance chrominance
   - 1500 Hz = minimum (-50%)
   - 2300 Hz = maximum (+50%)
@@ -128,15 +128,15 @@ for (let x = 0; x < 320; x++) {
   const yPos = yBeginSamples + (x * luminanceSamples) / horizontalPixels;
   const vPos = vBeginSamples + (x * chrominanceSamples) / horizontalPixels;
   const uPos = uBeginSamples + (x * chrominanceSamples) / horizontalPixels;
-  
+
   // Extract normalized values (0-1 range)
   const y = scratchBuffer[yPos] * 255;
   const v = scratchBuffer[vPos] * 255;
   const u = scratchBuffer[uPos] * 255;
-  
+
   // Convert YUV to RGB
   const rgb = yuv2rgb(y, u, v);
-  
+
   // Store pixel (RGBA)
   pixels[x * 4] = rgb.r;
   pixels[x * 4 + 1] = rgb.g;
