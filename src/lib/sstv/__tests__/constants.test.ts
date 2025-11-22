@@ -155,12 +155,12 @@ describe('SSTV Mode Constants', () => {
       expect(pd180Time).toBeGreaterThan(pd160Time);
     });
 
-    test('PD160 is balanced between PD120 and PD180', () => {
-      // PD160 scan time should be between PD120 and PD180
+    test('PD160 has longest scan time and pixel dwell', () => {
+      // PD160 scan time is longest
       expect(SSTV_MODES.PD160.scanTime).toBeGreaterThan(SSTV_MODES.PD120.scanTime);
       expect(SSTV_MODES.PD160.scanTime).toBeGreaterThan(SSTV_MODES.PD180.scanTime);
       
-      // PD160 pixel dwell time should be between PD120 and PD180
+      // PD160 pixel dwell time is longest (best SNR)
       const pd120Dwell = SSTV_MODES.PD120.colorScanTime / SSTV_MODES.PD120.width;
       const pd160Dwell = SSTV_MODES.PD160.colorScanTime / SSTV_MODES.PD160.width;
       const pd180Dwell = SSTV_MODES.PD180.colorScanTime / SSTV_MODES.PD180.width;
