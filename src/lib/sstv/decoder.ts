@@ -5,8 +5,9 @@ import { Robot72LineDecoder, DecodedLine as Robot72DecodedLine } from './robot72
 import { PD120LineDecoder, DecodedLine as PD120DecodedLine } from './pd120-line-decoder';
 import { PD160LineDecoder, DecodedLine as PD160DecodedLine } from './pd160-line-decoder';
 import { PD180LineDecoder, DecodedLine as PD180DecodedLine } from './pd180-line-decoder';
+import { ScottieS1LineDecoder, DecodedLine as ScottieS1DecodedLine } from './scottie-s1-line-decoder';
 
-type DecodedLine = Robot36DecodedLine | Robot72DecodedLine | PD120DecodedLine | PD160DecodedLine | PD180DecodedLine;
+type DecodedLine = Robot36DecodedLine | Robot72DecodedLine | PD120DecodedLine | PD160DecodedLine | PD180DecodedLine | ScottieS1DecodedLine;
 
 export enum DecoderState {
   IDLE = 'IDLE',
@@ -44,7 +45,7 @@ export class SSTVDecoder {
 
   // Sync detection
   private syncDetector: SyncDetector;
-  private lineDecoder: Robot36LineDecoder | Robot72LineDecoder | PD120LineDecoder | PD160LineDecoder | PD180LineDecoder;
+  private lineDecoder: Robot36LineDecoder | Robot72LineDecoder | PD120LineDecoder | PD160LineDecoder | PD180LineDecoder | ScottieS1LineDecoder;
 
   // Line boundaries detected by sync pulses
   private lastSyncPos: number = -1;
@@ -83,6 +84,8 @@ export class SSTVDecoder {
       this.lineDecoder = new Robot36LineDecoder(sampleRate);
     } else if (modeName === 'ROBOT72') {
       this.lineDecoder = new Robot72LineDecoder(sampleRate);
+    } else if (modeName === 'SCOTTIE_S1') {
+      this.lineDecoder = new ScottieS1LineDecoder(sampleRate);
     } else if (modeName === 'PD120') {
       this.lineDecoder = new PD120LineDecoder(sampleRate);
     } else if (modeName === 'PD160') {
@@ -187,10 +190,22 @@ export class SSTVDecoder {
 
     console.log(`🔍 decodeLine: lineLength=${lineLength} samples (${(lineLength/this.sampleRate*1000).toFixed(1)}ms)`);
 
+    // For Scottie modes, we need data BEFORE the sync pulse (negative timing)
+    // Check if decoder has getBeginSamples method (for negative timing support)
+    const hasNegativeTiming = 'getBeginSamples' in this.lineDecoder;
+    const beginOffset = hasNegativeTiming ? (this.lineDecoder as any).getBeginSamples() : 0;
+    const endOffset = hasNegativeTiming ? (this.lineDecoder as any).getEndSamples() : lineLength;
+    
+    // Calculate total buffer needed including negative timing
+    const totalSamples = hasNegativeTiming ? endOffset - beginOffset : lineLength;
+    const extractStart = hasNegativeTiming ? (startPos + beginOffset + this.bufferSize) % this.bufferSize : startPos;
+    
+    console.log(`🔍 Decoder timing: beginOffset=${beginOffset}, endOffset=${endOffset}, totalSamples=${totalSamples}`);
+
     // Extract DEMODULATED line samples into contiguous buffer
-    const lineSamples = new Float32Array(lineLength);
-    for (let i = 0; i < lineLength; i++) {
-      const pos = (startPos + i) % this.bufferSize;
+    const lineSamples = new Float32Array(totalSamples);
+    for (let i = 0; i < totalSamples; i++) {
+      const pos = (extractStart + i) % this.bufferSize;
       lineSamples[i] = this.demodulatedBuffer[pos]; // Use demodulated, not raw audio
     }
 
@@ -198,8 +213,9 @@ export class SSTVDecoder {
     const avgAmp = lineSamples.reduce((sum, val) => sum + Math.abs(val), 0) / lineSamples.length;
     console.log(`📊 Demodulated line: avgAmp=${avgAmp.toFixed(1)}, min=${Math.min(...lineSamples).toFixed(1)}, max=${Math.max(...lineSamples).toFixed(1)}`);
 
-    // Decode the scan line
-    const line = this.lineDecoder.decodeScanLine(lineSamples, 0, this.frequencyOffset);
+    // Decode the scan line (sync pulse is at -beginOffset for negative timing modes, 0 for others)
+    const syncPulsePos = hasNegativeTiming ? -beginOffset : 0;
+    const line = this.lineDecoder.decodeScanLine(lineSamples, syncPulsePos, this.frequencyOffset);
 
     // Copy decoded pixels to image data
     if (line && line.height > 0) {
