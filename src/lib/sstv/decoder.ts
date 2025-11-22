@@ -2,9 +2,10 @@ import { SSTV_MODES, SSTVMode, SAMPLE_RATE } from './constants';
 import { SyncDetector, SyncPulseWidth } from './sync-detector';
 import { Robot36LineDecoder, DecodedLine as Robot36DecodedLine } from './robot36-line-decoder';
 import { PD120LineDecoder, DecodedLine as PD120DecodedLine } from './pd120-line-decoder';
+import { PD160LineDecoder, DecodedLine as PD160DecodedLine } from './pd160-line-decoder';
 import { PD180LineDecoder, DecodedLine as PD180DecodedLine } from './pd180-line-decoder';
 
-type DecodedLine = Robot36DecodedLine | PD120DecodedLine | PD180DecodedLine;
+type DecodedLine = Robot36DecodedLine | PD120DecodedLine | PD160DecodedLine | PD180DecodedLine;
 
 export enum DecoderState {
   IDLE = 'IDLE',
@@ -42,7 +43,7 @@ export class SSTVDecoder {
 
   // Sync detection
   private syncDetector: SyncDetector;
-  private lineDecoder: Robot36LineDecoder | PD120LineDecoder | PD180LineDecoder;
+  private lineDecoder: Robot36LineDecoder | PD120LineDecoder | PD160LineDecoder | PD180LineDecoder;
 
   // Line boundaries detected by sync pulses
   private lastSyncPos: number = -1;
@@ -81,6 +82,8 @@ export class SSTVDecoder {
       this.lineDecoder = new Robot36LineDecoder(sampleRate);
     } else if (modeName === 'PD120') {
       this.lineDecoder = new PD120LineDecoder(sampleRate);
+    } else if (modeName === 'PD160') {
+      this.lineDecoder = new PD160LineDecoder(sampleRate);
     } else if (modeName === 'PD180') {
       this.lineDecoder = new PD180LineDecoder(sampleRate);
     } else {
