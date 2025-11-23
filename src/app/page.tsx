@@ -102,8 +102,8 @@ export default function Home() {
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-[#238636]/10 text-[#2ea043] border border-[#238636]/30">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 3.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H4a.5.5 0 010-1h3.5V4a.5.5 0 01.5-.5z"/>
-                <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm0-1A7 7 0 108 1a7 7 0 000 14z"/>
+                <path d="M0 2.5A1.5 1.5 0 011.5 1h13A1.5 1.5 0 0116 2.5v11a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 010 13.5v-11zM1.5 2a.5.5 0 00-.5.5v11a.5.5 0 00.5.5h13a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-13z"/>
+                <path d="M3 5.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0 3a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm.5 2.5a.5.5 0 000 1h9a.5.5 0 000-1h-9z"/>
               </svg>
               {modeInfo.resolution}
             </span>

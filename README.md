@@ -4,7 +4,13 @@ A web application for real-time SSTV (Slow Scan Television) decoding from microp
 
 🚀 **[Try the Live Demo](https://sstv-decoder.vercel.app)**
 
-![SSTV Decoder Screenshot](doc/screenshot.png)
+
+<p float="left">
+<img src="doc/screenshots/1.jpg" width="180"/>
+<img src="doc/screenshots/4.jpg" width="180"/>
+<img src="doc/screenshots/3.jpg" width="180"/>
+<img src="doc/screenshots/5.jpg" width="180">
+</p>
 
 ## Features
 
