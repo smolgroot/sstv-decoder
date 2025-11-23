@@ -14,7 +14,7 @@
         <img src="https://img.shields.io/github/issues/smolgroot/sstv-decoder" alt="GitHub Issues" />
     </a>
     <a href="https://github.com/smolgroot/sstv-decoder/blob/main/LICENSE">
-        <img src="https://img.shields.io/github/license/smolgroot/sstv-decoder" alt="License" />
+        <img src="https://img.shields.io/badge/license-0bsd-blue" alt="License" />
     </a>
     <a href="https://sstv-decoder.vercel.app">
         <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo" />
