@@ -1,9 +1,31 @@
-# SSTV Decoder Web Application
+<h1 align="center">
+    SSTV Decoder - Web Application
+</h3>
+<p align="center">
+   A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Supports multiple SSTV modes including Robot36 and PD120. Based on the <a href="https://github.com/xdsopl/robot36">Robot36 Android app</a> by xdsopl.
+</p>
+<br />
 
-A web application for real-time SSTV (Slow Scan Television) decoding from microphone input. Supports multiple SSTV modes including Robot36 and PD120. Based on the [Robot36 Android app](https://github.com/xdsopl/robot36) by xdsopl.
+<p align="center">
+    <a href="https://github.com/smolgroot/sstv-decoder/stargazers">
+        <img src="https://img.shields.io/github/stars/smolgroot/sstv-decoder?style=social" alt="GitHub stars" />
+    </a>
+    <a href="https://github.com/smolgroot/sstv-decoder/issues">
+        <img src="https://img.shields.io/github/issues/smolgroot/sstv-decoder" alt="GitHub Issues" />
+    </a>
+    <a href="https://github.com/smolgroot/sstv-decoder/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/smolgroot/sstv-decoder" alt="License" />
+    </a>
+    <a href="https://sstv-decoder.vercel.app">
+        <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo" />
+    </a>
+</p>
 
-🚀 **[Try the Live Demo](https://sstv-decoder.vercel.app)**
+<hr>
 
+<p align="center">
+   <a href="https://sstv-decoder.vercel.app"><b>🚀 Try the Live Demo</b></a>
+</p>
 
 <p float="left">
 <img src="doc/screenshots/1.jpg" width="180"/>
