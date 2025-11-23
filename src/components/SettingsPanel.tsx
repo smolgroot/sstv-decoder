@@ -106,8 +106,8 @@ export default function SettingsPanel({ currentMode, onModeChange, disabled = fa
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-4 sm:p-6 space-y-4">
+            {/* Body - scrollable */}
+            <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               <div>
                 <h3 className="text-sm font-semibold text-[#8b949e] uppercase tracking-wide mb-3">
                   SSTV Mode
