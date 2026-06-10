@@ -19,6 +19,31 @@ body {
   overflow: hidden;
 }
 
+/* Leaflet popup dark theme */
+.leaflet-popup-content-wrapper {
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.leaflet-popup-tip {
+  background: #161b22;
+}
+.leaflet-popup-close-button {
+  color: #8b949e !important;
+}
+.leaflet-popup-content {
+  margin: 8px 10px;
+}
+.leaflet-attribution-flag { display: none !important; }
+.leaflet-control-attribution {
+  background: rgba(13,17,23,0.7) !important;
+  color: #484f58 !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a { color: #8b949e !important; }
+
 body {
   color: var(--foreground);
   background: var(--background);
