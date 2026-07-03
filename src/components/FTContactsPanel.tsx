@@ -10,6 +10,14 @@ import { callsignCountry } from '@/lib/ft/prefixes';
 
 import type { FTMode } from '@/lib/ft/decoder';
 import { fmtAbsHz } from '@/lib/formatFreq';
+import VirtualList from './VirtualList';
+
+// Virtualized contact list geometry: collapsed cards are fixed-height
+// (summary row 28px + 2px borders + 6px gap); the expanded card is measured
+// live via ResizeObserver, with a fallback used until the first measurement.
+const CARD_GAP_H = 6;
+const COLLAPSED_CARD_H = 30 + CARD_GAP_H;
+const EXPANDED_CARD_FALLBACK_H = 420;
 
 // Format a stored absolute frequency. Values > 1 MHz are already absolute (VFO
 // was set at decode time); smaller values are raw audio offsets (no VFO then).
@@ -565,22 +573,39 @@ export default function FTContactsPanel({ contacts, mode, myCall = '', myGrid = 
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, []);
 
-  const cardRefs = useRef(new Map<string, HTMLDivElement>());
-
-  useEffect(() => {
-    for (const cs of cardRefs.current.keys()) {
-      if (!contacts.has(cs)) cardRefs.current.delete(cs);
-    }
-  }, [contacts]);
-
   const select = useCallback((callsign: string) => {
     if (contacts.has(callsign)) setExpanded(callsign);
   }, [contacts]);
 
-  useEffect(() => {
-    if (expanded) {
-      cardRefs.current.get(expanded)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // ── Virtualized list plumbing ────────────────────────────────────────────
+  // Collapsed cards have a fixed height; the (single) expanded card is
+  // measured live so rows below it are positioned correctly.
+  const [expandedH, setExpandedH] = useState(EXPANDED_CARD_FALLBACK_H);
+  const [heightsVersion, setHeightsVersion] = useState(0);
+  useEffect(() => { setHeightsVersion(v => v + 1); }, [expanded, expandedH]);
+
+  const expandedRO = useRef<ResizeObserver | null>(null);
+  const measureExpanded = useCallback((el: HTMLDivElement | null) => {
+    expandedRO.current?.disconnect();
+    if (!el) return;
+    if (!expandedRO.current) {
+      expandedRO.current = new ResizeObserver(entries => {
+        const box = entries[0];
+        const h = (box.borderBoxSize?.[0]?.blockSize ?? box.contentRect.height) + CARD_GAP_H;
+        setExpandedH(prev => (Math.abs(prev - h) > 2 ? h : prev));
+      });
     }
+    expandedRO.current.observe(el);
+  }, []);
+  useEffect(() => () => expandedRO.current?.disconnect(), []);
+
+  // Scroll the expanded card into view (replaces the old scrollIntoView refs)
+  const [scrollIdx, setScrollIdx] = useState(-1);
+  useEffect(() => {
+    if (expanded) setScrollIdx(filtered.findIndex(c => c.callsign === expanded));
+    else setScrollIdx(-1);
+    // scroll on expansion change only — not when the list reorders under it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
   useEffect(() => {
@@ -942,36 +967,36 @@ export default function FTContactsPanel({ contacts, mode, myCall = '', myGrid = 
         </div>
       )}
 
-      {/* Contact list */}
-      <div className="flex-1 overflow-y-auto min-h-0 max-h-[50vh] lg:max-h-none">
-        {filtered.length === 0 ? (
+      {/* Contact list — windowed: DOM size is constant however many contacts exist */}
+      <VirtualList
+        items={filtered}
+        className="flex-1 overflow-y-auto min-h-0 max-h-[50vh] lg:max-h-none"
+        itemKey={c => c.callsign}
+        itemHeight={c => (c.callsign === expanded ? expandedH : COLLAPSED_CARD_H)}
+        heightsVersion={heightsVersion}
+        scrollToIndex={scrollIdx}
+        overscan={5}
+        empty={
           <div className="flex flex-col items-center justify-center h-28 gap-2">
             <div className="text-3xl select-none">{q || hasAnyFilter ? '🔍' : '🌍'}</div>
             <div className="text-xs text-[#484f58] font-mono">
               {q ? `No contacts match "${query.trim()}"` : hasAnyFilter ? 'No contacts match this filter' : 'No contacts yet'}
             </div>
           </div>
-        ) : (
-          filtered.map(c => (
-            <div
-              key={c.callsign}
-              ref={el => {
-                if (el) cardRefs.current.set(c.callsign, el);
-                else cardRefs.current.delete(c.callsign);
-              }}
-            >
-              <ContactCard
-                contact={c}
-                expanded={expanded === c.callsign}
-                onToggle={() => setExpanded(p => p === c.callsign ? null : c.callsign)}
-                onSelect={select}
-                contactMap={contacts}
-                myCall={myCall}
-              />
-            </div>
-          ))
+        }
+        renderItem={c => (
+          <div ref={c.callsign === expanded ? measureExpanded : undefined} style={{ overflow: c.callsign === expanded ? 'visible' : 'hidden' }}>
+            <ContactCard
+              contact={c}
+              expanded={expanded === c.callsign}
+              onToggle={() => setExpanded(p => p === c.callsign ? null : c.callsign)}
+              onSelect={select}
+              contactMap={contacts}
+              myCall={myCall}
+            />
+          </div>
         )}
-      </div>
+      />
     </div>
   );
 }

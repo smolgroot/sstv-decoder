@@ -1,14 +1,15 @@
 'use client';
 
-import { Fragment, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Fragment, forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { DecoderControls, DecoderProps } from './DecoderControls';
 import { fmtAbsHz } from '@/lib/formatFreq';
 import AudioAnalysisPanel from './AudioAnalysisPanel';
 import { useFTProcessor } from '@/hooks/useFTProcessor';
 import { FTMode, FT_WINDOW_SECONDS } from '@/lib/ft/decoder';
-import { Contact, mergeContacts, parseFTMsg, parseADIF, isValidCallsign, gridToLatLon, CONTACT_PALETTE } from '@/lib/ft/parser';
+import { Contact, mergeContacts, parseFTMsg, parseFTMsgCached, parseADIF, isValidCallsign, gridToLatLon, CONTACT_PALETTE } from '@/lib/ft/parser';
 import FTContactsPanel from './FTContactsPanel';
 import FTWasmPanel from './FTWasmPanel';
+import VirtualList from './VirtualList';
 
 // ── Clock ring (rAF-driven, no setState) ──────────────────────────────────────
 
@@ -139,12 +140,79 @@ function formatDT(dt: number): string { return (dt >= 0 ? '+' : '') + dt.toFixed
 
 const RPT_TOKEN = /^R?[+-][0-9]{1,2}$/;
 
-// Message text with known callsigns colored + linked to their contact card,
-// and signal reports colored by the same quality scheme as the dB column
-function MsgText({ msg, contacts, myCall, onSelect }: {
+// ── Memoized message row ──────────────────────────────────────────────────────
+// The messages table can hold thousands of rows; re-rendering them all per
+// streamed batch dominated UI freeze time. Rows only re-render when their own
+// data changes: colorSig captures the contact colors this row displays, and
+// getContact/onSelect are stable refs so shallow memo comparison holds.
+
+export type MsgRowData = {
+  kind: 'msg';
+  absFreq: string;
+  dt: number;
+  snr: number;
   msg: string;
-  contacts: Map<string, Contact>;
+  time: Date;
+  addressedToMe: boolean;
+  colorSig: string;
+  key: string;
+};
+
+// Fixed row heights — VirtualList positions rows arithmetically from these.
+export const MSG_ROW_H = 24;
+export const SEP_ROW_H = 22;
+// Contacts are merged continuously (authoritative ref) but published to the
+// heavy consumers (panel sort/stats, map markers, auto-reply) at most this often.
+const CONTACTS_PUBLISH_MS = 800;
+// Shared 5-column grid (UTC · Hz · dB · Δ · Message) for header + rows;
+// fixed widths so independently-rendered rows stay column-aligned.
+const MSG_GRID_COLS = 'grid grid-cols-[78px_92px_54px_46px_minmax(0,1fr)]';
+
+const MessageRow = memo(function MessageRow({ row, timeStr, myCall, getContact, onSelect }: {
+  row: MsgRowData;
+  timeStr: string;
   myCall: string;
+  getContact: (cs: string) => Contact | undefined;
+  onSelect: (cs: string) => void;
+}) {
+  return (
+    <div className={`${MSG_GRID_COLS} h-full items-center border-b border-[#21262d]/50 transition-colors ${
+      row.addressedToMe
+        ? 'bg-[#f0e68c]/5 hover:bg-[#f0e68c]/10'
+        : 'hover:bg-[#21262d]/40'
+    }`}>
+      <div className="px-2 whitespace-nowrap" style={{ color: row.addressedToMe ? '#f0e68c' : '#484f58' }}>
+        {row.addressedToMe && <span className="mr-1 text-[10px]">▶</span>}
+        {timeStr}
+      </div>
+      <div className="px-2 text-right text-[#8b949e] whitespace-nowrap">{row.absFreq}</div>
+      <div className="px-2 text-right whitespace-nowrap" style={{ color: snrColor(row.snr) }}>
+        {row.snr > 0 ? '+' : ''}{row.snr.toFixed(1)}
+      </div>
+      <div className="px-2 text-right whitespace-nowrap" style={{ color: dtColor(row.dt) }}>
+        {formatDT(row.dt)}
+      </div>
+      <div className="px-2 truncate" style={{ color: msgColor(row.msg, row.snr) }}>
+        <MsgTextStable msg={row.msg} myCall={myCall} getContact={getContact} onSelect={onSelect} />
+      </div>
+    </div>
+  );
+}, (prev, next) =>
+  prev.row.msg === next.row.msg &&
+  prev.row.snr === next.row.snr &&
+  prev.row.dt === next.row.dt &&
+  prev.row.absFreq === next.row.absFreq &&
+  prev.row.addressedToMe === next.row.addressedToMe &&
+  prev.row.colorSig === next.row.colorSig &&
+  prev.timeStr === next.timeStr &&
+  prev.myCall === next.myCall);
+
+// MsgText variant that reads contacts through a stable accessor so the memo
+// above isn't defeated by the contacts Map identity changing every merge.
+function MsgTextStable({ msg, myCall, getContact, onSelect }: {
+  msg: string;
+  myCall: string;
+  getContact: (cs: string) => Contact | undefined;
   onSelect: (cs: string) => void;
 }) {
   return (
@@ -160,7 +228,7 @@ function MsgText({ msg, contacts, myCall, onSelect }: {
             </Fragment>
           );
         }
-        const c = contacts.get(w);
+        const c = getContact(w);
         if (c) {
           return (
             <Fragment key={i}>
@@ -209,6 +277,12 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
   const vfoRef = useRef<number>(0);
   useEffect(() => { vfoRef.current = vfoFrequency ?? 0; }, [vfoFrequency]);
 
+  // Stable contact accessor for memoized rows: reads through a ref so the
+  // callback identity never changes while always seeing current contacts.
+  const contactsRef = useRef(contacts);
+  contactsRef.current = contacts;
+  const getContactStable = useCallback((cs: string) => contactsRef.current.get(cs), []);
+
   // ── UTC clock skew check ──────────────────────────────────────────────────
   // Fetch once against a public time API; warn if local clock is off by >1 s.
   const [clockSkewS, setClockSkewS] = useState<number | null>(null);
@@ -237,12 +311,26 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
   // each effect run merges only the slice it hasn't seen yet.
   const mergedCountRef = useRef<Map<number, number>>(new Map());
 
+  // Authoritative contacts live in a ref (always current, no data loss);
+  // the state copy that drives the heavy consumers — contacts panel sort/stats,
+  // Leaflet markers, auto-reply — is published at most once per interval.
+  const contactsAuthRef = useRef<Map<string, Contact>>(new Map());
+  const publishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const publishContacts = useCallback(() => {
+    publishTimerRef.current = null;
+    setContacts(contactsAuthRef.current);
+    onContactsChange?.(contactsAuthRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onContactsChange]);
+  useEffect(() => () => { if (publishTimerRef.current) clearTimeout(publishTimerRef.current); }, []);
+
   useEffect(() => {
     const { results } = state;
     if (results.length === 0) {
       prevResultLenRef.current = 0;
       frozenVfoRef.current.clear();
       mergedCountRef.current.clear();
+      contactsAuthRef.current = new Map();
       return;
     }
 
@@ -260,10 +348,7 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
     }
 
     // Bake absolute freq into ContactMsg so contacts panel never needs VFO.
-    // Compute next outside setContacts so we can pass the same value to
-    // onContactsChange without running the merge twice or calling a side-effect
-    // inside the updater (which React may call during render).
-    let next = contacts;
+    let next = contactsAuthRef.current;
     let changed = false;
     for (const r of results.slice().reverse()) { // oldest first
       const key = r.windowStart.getTime();
@@ -282,18 +367,23 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
       changed = true;
     }
     if (changed) {
-      setContacts(next);
-      onContactsChange?.(next);
+      contactsAuthRef.current = next;
+      if (publishTimerRef.current === null) {
+        publishTimerRef.current = setTimeout(publishContacts, CONTACTS_PUBLISH_MS);
+      }
     }
     prevResultLenRef.current = results.length;
   }, [state.results]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReset = useCallback(() => {
     clearResults();
+    contactsAuthRef.current = new Map();
+    if (publishTimerRef.current) { clearTimeout(publishTimerRef.current); publishTimerRef.current = null; }
     setContacts(new Map());
     onContactsChange?.(new Map());
     prevResultLenRef.current = 0;
     frozenVfoRef.current.clear();
+    mergedCountRef.current.clear();
     // Restart audio capture to flush the ScriptProcessorNode and AudioContext —
     // same effect as mode-switch; relieves main-thread audio callback buildup.
     if (state.isRecording) {
@@ -375,8 +465,7 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
   const hasData   = results.length > 0 || contacts.size > 0;
 
   type SepRow = { kind: 'sep'; time: Date; mode: FTMode; empty: boolean; decoding: boolean; decodeMs: number; key: string };
-  type MsgRow = { kind: 'msg'; absFreq: string; dt: number; snr: number; msg: string; time: Date; addressedToMe: boolean; key: string };
-  type TableRow = SepRow | MsgRow;
+  type TableRow = SepRow | MsgRowData;
 
   const myCallUpper = myCall.toUpperCase();
 
@@ -387,20 +476,28 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
     return [
       { kind: 'sep' as const, time: r.windowStart, mode: r.mode, empty: r.messages.length === 0, decoding: !!r.decoding, decodeMs: r.decodeMs, key: `sep-${ri}` },
       ...r.messages.map((m, mi) => {
-        const parsed = parseFTMsg(m.msg);
+        const parsed = parseFTMsgCached(m.msg);
         const addressedToMe = !!myCallUpper && parsed.callee?.toUpperCase() === myCallUpper;
+        // Signature of everything row rendering depends on beyond its own text:
+        // contact colors for the callsigns in this message. Lets the memoized
+        // row skip re-rendering unless ITS colors changed.
+        let colorSig = '';
+        for (const w of [parsed.caller, parsed.callee]) {
+          const c = w ? contacts.get(w) : undefined;
+          if (c) colorSig += `${w}:${c.color};`;
+        }
         return {
           kind: 'msg' as const,
           absFreq: formatFreq(m.freq, frozenVfo),
           dt: m.dt, snr: m.snr, msg: m.msg,
-          time: r.windowStart, addressedToMe,
+          time: r.windowStart, addressedToMe, colorSig,
           key: `msg-${ri}-${mi}`,
         };
       }),
     ];
   // frozenVfoRef is a ref — not a dep, but results changing is the only trigger needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [results, myCallUpper]);
+  }), [results, myCallUpper, contacts]);
 
   const controls: DecoderControls = {
     isRecording: state.isRecording,
@@ -481,8 +578,24 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
           )}
 
 
-          <div className="flex-1 overflow-y-auto min-h-0 max-h-[60vh] lg:max-h-none font-mono text-xs">
-            {results.length === 0 ? (
+          {/* column header (outside the scroller — no sticky tricks needed) */}
+          {results.length > 0 && (
+            <div className={`${MSG_GRID_COLS} font-mono text-xs text-[#8b949e] border-b border-[#30363d] font-semibold shrink-0`}>
+              <div className="text-left py-1.5 px-2 whitespace-nowrap">UTC</div>
+              <div className="text-right py-1.5 px-2">Hz</div>
+              <div className="text-right py-1.5 px-2">dB</div>
+              <div className="text-right py-1.5 px-2" title="Time offset vs UTC window">Δ</div>
+              <div className="text-left py-1.5 px-2">Message</div>
+            </div>
+          )}
+          {/* Windowed list: DOM size stays constant regardless of history length */}
+          <VirtualList
+            items={tableRows}
+            className="flex-1 overflow-y-auto min-h-0 max-h-[60vh] lg:max-h-none font-mono text-xs"
+            itemKey={row => row.key}
+            itemHeight={row => (row.kind === 'sep' ? SEP_ROW_H : MSG_ROW_H)}
+            overscan={10}
+            empty={
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-[#484f58] space-y-2">
                   <div className="text-4xl">📻</div>
@@ -495,61 +608,32 @@ const FTDecoder = forwardRef<DecoderControls, { ftMode: FTMode; myCall?: string;
                   )}
                 </div>
               </div>
-            ) : (
-              <table className="w-full border-collapse">
-                <thead className="sticky top-0 bg-[#0d1117] z-10">
-                  <tr className="text-[#8b949e] border-b border-[#30363d]">
-                    <th className="text-left py-1.5 px-2 font-semibold whitespace-nowrap">UTC</th>
-                    <th className="text-right py-1.5 px-2 font-semibold">Hz</th>
-                    <th className="text-right py-1.5 px-2 font-semibold">dB</th>
-                    <th className="text-right py-1.5 px-2 font-semibold" title="Time offset vs UTC window">Δ</th>
-                    <th className="text-left py-1.5 px-2 font-semibold w-full">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableRows.map(row =>
-                    row.kind === 'sep' ? (
-                      <tr key={row.key}>
-                        <td colSpan={5} className="px-2 py-0.5 text-[10px] text-[#484f58] border-t border-[#21262d] bg-[#0d1117]/60">
-                          {localHMS(row.time)} — {row.mode}
-                          {row.decoding && (
-                            <span className="ml-2 text-[#e3b341] animate-pulse">decoding…</span>
-                          )}
-                          {!row.decoding && row.empty && <span className="ml-2 text-[#30363d]">no signals</span>}
-                          {!row.decoding && row.decodeMs > 0 && (
-                            <span className="ml-2 text-[#30363d]" title="decode time">
-                              dec {(row.decodeMs / 1000).toFixed(1)}s
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={row.key} className={`border-b border-[#21262d]/50 transition-colors ${
-                        row.addressedToMe
-                          ? 'bg-[#f0e68c]/5 hover:bg-[#f0e68c]/10'
-                          : 'hover:bg-[#21262d]/40'
-                      }`}>
-                        <td className="py-1 px-2 whitespace-nowrap" style={{ color: row.addressedToMe ? '#f0e68c' : '#484f58' }}>
-                          {row.addressedToMe && <span className="mr-1 text-[10px]">▶</span>}
-                          {localHMS(row.time)}
-                        </td>
-                        <td className="py-1 px-2 text-right text-[#8b949e] whitespace-nowrap">{row.absFreq}</td>
-                        <td className="py-1 px-2 text-right whitespace-nowrap" style={{ color: snrColor(row.snr) }}>
-                          {row.snr > 0 ? '+' : ''}{row.snr.toFixed(1)}
-                        </td>
-                        <td className="py-1 px-2 text-right whitespace-nowrap" style={{ color: dtColor(row.dt) }}>
-                          {formatDT(row.dt)}
-                        </td>
-                        <td className="py-1 px-2 truncate max-w-0" style={{ color: msgColor(row.msg, row.snr) }}>
-                          <MsgText msg={row.msg} contacts={contacts} myCall={myCall} onSelect={selectContact} />
-                        </td>
-                      </tr>
-                    )
+            }
+            renderItem={row =>
+              row.kind === 'sep' ? (
+                <div className="h-full px-2 text-[10px] text-[#484f58] border-t border-[#21262d] bg-[#0d1117]/60 flex items-center">
+                  {localHMS(row.time)} — {row.mode}
+                  {row.decoding && (
+                    <span className="ml-2 text-[#e3b341] animate-pulse">decoding…</span>
                   )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  {!row.decoding && row.empty && <span className="ml-2 text-[#30363d]">no signals</span>}
+                  {!row.decoding && row.decodeMs > 0 && (
+                    <span className="ml-2 text-[#30363d]" title="decode time">
+                      dec {(row.decodeMs / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <MessageRow
+                  row={row}
+                  timeStr={localHMS(row.time)}
+                  myCall={myCall}
+                  getContact={getContactStable}
+                  onSelect={selectContact}
+                />
+              )
+            }
+          />
 
           {/* WASM engine monitor + runtime tuning */}
           <div className="mt-2 shrink-0">

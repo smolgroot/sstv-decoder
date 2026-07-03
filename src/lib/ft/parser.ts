@@ -33,6 +33,24 @@ export function isValidCallsign(cs: string | undefined): cs is string {
   return CS_EXACT.test(cs);
 }
 
+// Parse results memoized by message text. The messages table re-renders on
+// every streamed partial and used to re-parse its entire history each time
+// (O(n²) per window on busy bands); the cache makes repeat parses O(1).
+// Bounded: cleared wholesale when it outgrows its cap — messages repeat
+// heavily (CQ cycles), so hit rates stay high even after a reset.
+const parseCache = new Map<string, ParsedFTMsg>();
+const PARSE_CACHE_MAX = 20_000;
+
+export function parseFTMsgCached(raw: string): ParsedFTMsg {
+  let p = parseCache.get(raw);
+  if (!p) {
+    if (parseCache.size >= PARSE_CACHE_MAX) parseCache.clear();
+    p = parseFTMsg(raw);
+    parseCache.set(raw, p);
+  }
+  return p;
+}
+
 // Every FT message is a handful of words, each one of: a callsign (or <...>
 // placeholder), a Maidenhead grid, a signal report (R±nn / ±nn), or a short
 // sign-off (73 / RRR / RR73). Classify word-by-word instead of whole-message
@@ -131,7 +149,9 @@ export interface Contact {
 // Maximum unique callsigns to keep in memory at once.
 // On a busy band (20m FT8) you can hear 200+ unique calls/hour — cap prevents
 // unbounded growth. Oldest-seen contacts are evicted first when the limit is hit.
-const MAX_CONTACTS = 500;
+// 1200 gives headroom over the validated 1000-contact performance target
+// (virtualized lists keep render cost independent of contact count).
+const MAX_CONTACTS = 1200;
 
 export function mergeContacts(
   existing: Map<string, Contact>,

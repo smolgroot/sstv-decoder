@@ -47,7 +47,7 @@ interface SliderSpec {
 
 const SLIDERS: SliderSpec[] = [
   { key: 'osdDepth',      label: 'OSD depth',    min: 0,   max: 6,    step: 1,   hint: '0 = off; higher rescues weaker signals, too high decodes garbage' },
-  { key: 'budgetSec',     label: 'CPU budget s', min: 1,   max: 12,   step: 0.5, hint: 'decode time-box per 15 s window' },
+  { key: 'budgetSec',     label: 'CPU budget s', min: 1,   max: 12,   step: 0.5, hint: 'decode time-box per 15 s window — soft limit: fixed per-pass costs can overrun it by a few seconds (known issue)' },
   { key: 'npasses',       label: 'Sub. passes',  min: 1,   max: 6,    step: 1,   hint: 'decode → subtract → re-scan iterations' },
   { key: 'ldpcIters',     label: 'LDPC iters',   min: 10,  max: 60,   step: 5,   hint: 'belief-propagation iterations' },
   { key: 'osdLdpcThresh', label: 'OSD thresh',   min: 40,  max: 83,   step: 1,   hint: 'min correct parity bits before OSD is tried' },

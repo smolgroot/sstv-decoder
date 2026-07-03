@@ -12,6 +12,34 @@ them into a version section when cutting a release.
 
 ## [Unreleased]
 
+### Fixed
+
+- UI freeze on every decoded message once contacts accumulated (noticeable
+  from ~100-200 contacts on busy bands). Four cumulative fixes: streamed
+  partials batch into one state update per 250 ms; message parsing is cached
+  and table rows are memoized (was O(history) per new message); the decoded
+  messages table and contacts list are windowed via a new dependency-free
+  `VirtualList` (constant DOM size regardless of history — was 38k+ nodes);
+  contacts merge continuously into an authoritative ref but publish to the
+  heavy consumers (panel sort/stats, map markers, auto-reply) at most every
+  800 ms. Validated to 1200 contacts at 100 msgs/window synthetic load.
+
+### Changed
+
+- `MAX_CONTACTS` raised from 500 to 1200 (virtualized lists keep render cost
+  independent of contact count; LRU eviction unchanged).
+- Dev-only `window.__ftInjectWindow` hook (tree-shaken from production) lets
+  performance tests inject synthetic decode windows through the real
+  streaming pipeline.
+
+### Known issues
+
+- The FT8 decode CPU budget is a soft limit: ft8mon only checks its deadline
+  between candidates, so fixed per-pass costs (FFTs, coarse search,
+  subtraction) can overrun the configured budget by roughly a second per
+  pass, more on slow machines. Inherent to the strongest-first multi-pass
+  design; documented in the README.
+
 ## [0.2.0] - 2026-07-02
 
 ### Added

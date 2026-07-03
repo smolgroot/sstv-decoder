@@ -579,6 +579,8 @@ ft8mon decodes substantially more signals than ft8_lib (on ft8_lib's reference W
 
 `lib/ft8mon` is vendored (not a submodule) because it carries small Emscripten compatibility patches, all under `#ifdef __EMSCRIPTEN__`: synchronous decode instead of `std::thread`, `set()` returns NaN instead of `exit(1)` on unknown params, no FFTW plan lock file, no libsndfile dependency.
 
+**Known issue — CPU budget is a soft limit.** ft8mon checks its decode deadline only between candidates inside each subtraction pass; the fixed per-pass work (full-band FFTs, coarse Costas search, subtraction re-synthesis) is not deadline-checked. In practice a decode can overrun the configured budget by roughly a second per pass — more on CPU-constrained machines — and the decoder may finish its last in-progress message past the deadline. This is inherent to the strongest-first multi-pass design and is left as-is; the decode-time display in the FT panel shows the real cost, and the suggested-budget marker adapts to it.
+
 The ft8_lib source is a git submodule. When cloning for the first time, initialize it with:
 
 ```bash

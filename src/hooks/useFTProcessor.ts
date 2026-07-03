@@ -16,6 +16,9 @@ export interface FTProcessorState {
   status: 'idle' | 'waiting' | 'recording' | 'decoding';
 }
 
+// Streamed partial decodes are coalesced into one state update per interval.
+const PARTIAL_FLUSH_MS = 250;
+
 // Returns ms until the next aligned window boundary
 function msUntilNextWindow(windowSec: number): number {
   const totalMs = windowSec * 1000;
@@ -68,6 +71,48 @@ export function useFTProcessor(mode: FTMode) {
       timersRef.current.add(t);
     });
 
+  // Dev-only synthetic decode injection — lets perf tests simulate a long run
+  // (hundreds of contacts) in seconds without audio. Exercises the exact same
+  // streaming path as real decodes: placeholder → partials → final replace.
+  // Tree-shaken out of production builds.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    (window as unknown as Record<string, unknown>).__ftInjectWindow =
+      (messages: FTMessage[], partialMs = 50) => {
+        const windowStart = new Date();
+        const key = windowStart.getTime();
+        const patch = (fn: (r: FTDecodeResult) => FTDecodeResult) =>
+          setState(prev => ({
+            ...prev,
+            results: prev.results.map(r => (r.windowStart.getTime() === key ? fn(r) : r)),
+          }));
+        setState(prev => ({
+          ...prev,
+          results: [
+            { windowStart, mode: modeRef.current, messages: [], decodeMs: 0, decoding: true },
+            ...prev.results,
+          ].slice(0, 100),
+        }));
+        // Mirror the real path's batching: partials arrive every `partialMs`
+        // but flush as one state update per PARTIAL_FLUSH_MS.
+        const perBatch = Math.max(1, Math.round(PARTIAL_FLUSH_MS / partialMs));
+        for (let i = 0; i < messages.length; i += perBatch) {
+          const batch = messages.slice(0, i + perBatch);
+          setTimeout(
+            () => patch(r => ({ ...r, messages: batch })),
+            (i + perBatch) * partialMs,
+          );
+        }
+        setTimeout(
+          () => patch(r => ({ ...r, messages, decodeMs: messages.length * partialMs, decoding: false })),
+          (messages.length + 2) * partialMs,
+        );
+      };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__ftInjectWindow;
+    };
+  }, []);
+
   const runLoop = useCallback(async () => {
     // Kick off decode of a captured buffer in the background; does not block the record loop.
     // A placeholder result is inserted immediately and messages stream into it as the
@@ -87,15 +132,30 @@ export function useFTProcessor(mode: FTMode) {
       };
       setState(prev => ({ ...prev, results: [placeholder, ...prev.results].slice(0, 100) }));
 
+      // Batch streamed partials: one state update per ~250 ms instead of one
+      // per message — each update walks the whole render/contacts pipeline,
+      // which dominates UI cost on busy bands.
+      const buffer: FTMessage[] = [];
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      const flush = () => {
+        flushTimer = null;
+        if (buffer.length === 0) return;
+        const batch = buffer.splice(0);
+        patchWindow(r => ({ ...r, messages: [...r.messages, ...batch] }));
+      };
+
       const onPartial = (msg: FTMessage) => {
         if (!isRunningRef.current) return;
-        patchWindow(r => ({ ...r, messages: [...r.messages, msg] }));
+        buffer.push(msg);
+        if (flushTimer === null) flushTimer = setTimeout(flush, PARTIAL_FLUSH_MS);
       };
 
       decodeFTAudio(captured, sampleRate, modeRef.current, onPartial)
         .then(messages => ({ messages, decodeMs: performance.now() - t0 }))
         .catch(() => ({ messages: [] as FTMessage[], decodeMs: performance.now() - t0 }))
         .then(({ messages, decodeMs }) => {
+          if (flushTimer !== null) { clearTimeout(flushTimer); flushTimer = null; }
+          buffer.length = 0; // the final list supersedes any unflushed partials
           if (!isRunningRef.current) return;
           // Final list is authoritative (same content the partials streamed);
           // replace rather than append so nothing is duplicated or lost.
