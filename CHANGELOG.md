@@ -14,6 +14,14 @@ them into a version section when cutting a release.
 
 ### Fixed
 
+- Cumulative decode-Δ drift under CPU load: capture windows free-ran on
+  `sleep(15 s)` after the first UTC alignment, so every ounce of main-thread
+  delay at a window boundary accumulated permanently into capture-start
+  lateness (all decodes shifting toward +1 s and beyond over a long session).
+  Windows now re-align to the wall clock every cycle (self-correcting), the
+  next capture buffer is re-armed before decode dispatch instead of after,
+  and arming lateness >300 ms is logged to the console for diagnosis.
+
 - UI freeze on every decoded message once contacts accumulated (noticeable
   from ~100-200 contacts on busy bands). Four cumulative fixes: streamed
   partials batch into one state update per 250 ms; message parsing is cached

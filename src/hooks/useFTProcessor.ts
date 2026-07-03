@@ -171,6 +171,7 @@ export function useFTProcessor(mode: FTMode) {
       await sleep(waitMs);
     }
 
+    let firstWindow = true;
     while (isRunningRef.current) {
       const curWindowSec = FT_WINDOW_SECONDS[modeRef.current];
 
@@ -180,17 +181,37 @@ export function useFTProcessor(mode: FTMode) {
       sampleBufRef.current   = new Float32Array(capacity);
       sampleCountRef.current = 0;
       windowStartRef.current = new Date();
-      setState(prev => ({ ...prev, status: 'recording' }));
+      if (firstWindow) {
+        firstWindow = false;
+        setState(prev => ({ ...prev, status: 'recording' }));
+      }
 
-      await sleep(curWindowSec * 1000);
+      // Capture-start lateness vs the UTC boundary this window belongs to.
+      // A uniformly positive decode Δ means the window opened late — surface
+      // the number so drift is diagnosable from the console.
+      const lateMs = (windowStartRef.current.getTime()) % (curWindowSec * 1000);
+      if (lateMs > 300 && lateMs < curWindowSec * 1000 - 300) {
+        console.debug(`[ft] window armed ${lateMs} ms after the UTC boundary — decode Δ will shift by ~+${(lateMs / 1000).toFixed(1)}s`);
+      }
+
+      // Re-align to the wall clock EVERY window, not just the first: a free-
+      // running sleep(windowSec) accumulates every ounce of main-thread delay
+      // into permanent capture-start drift (visible as growing positive Δ on
+      // all decodes). msUntilNextWindow self-corrects each cycle instead.
+      const sleepMs = msUntilNextWindow(curWindowSec) || curWindowSec * 1000;
+      await sleep(sleepMs);
       if (!isRunningRef.current) break;
 
-      // Snapshot captured audio, then immediately start next window's recording
+      // Snapshot captured audio and IMMEDIATELY re-arm the next window's
+      // buffer before dispatching the decode — dispatch triggers React work
+      // that must not delay the next capture start.
       const captured    = sampleBufRef.current.slice(0, sampleCountRef.current);
       const windowStart = windowStartRef.current!;
-      sampleBufRef.current = null;
+      sampleBufRef.current   = new Float32Array(capacity);
+      sampleCountRef.current = 0;
+      windowStartRef.current = new Date();
 
-      // Kick off decode concurrently — next iteration arms the buffer immediately
+      // Kick off decode concurrently
       dispatchDecode(captured, sampleRate, windowStart);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

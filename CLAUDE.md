@@ -27,6 +27,20 @@ node lib/wasm_build/testbuild/test_decode.mjs 2
 
 Gotchas already learned the hard way (don't re-litigate): ft8mon needs `STACK_SIZE=8388608` (ldpc_decode overflows the 64KB default); no pthreads/SharedArrayBuffer (GitHub Pages can't serve COOP/COEP) — ft8mon's `entry()` runs `go()` synchronously under `#ifdef __EMSCRIPTEN__`; keep all ft8mon patches inside `#ifdef __EMSCRIPTEN__` guards. A running decode worker holds the old WASM — use the ⟳ WASM button or reload the page after rebuilding.
 
+## Performance testing — testbed, golden profiles, and discipline
+
+`npm run test:perf` (scripts/perf-testbed.ts) is the canonical heavy-load testbed: headless **Firefox** (playwright-core; never Chrome — user rule), synthetic decode windows through the dev-only `__ftInjectWindow` hook, main-thread blocking measured via heartbeat gaps (Firefox has no Long Tasks API). `--cat` additionally connects the mock uSDX (src/lib/cat/mockSerial.ts) and reports poll-cadence stretching. Requires a dev server running a **development** build (the hook is tree-shaken from production) — start it with `npm run dev:test` (port 3002). Port 3000 is the developer's own always-running server; no test or tool may ever bind or assume it.
+
+Golden regression profiles and the numbers any UI/pipeline change must hold (see README "UI performance testbed" for the table): target 50/12s→1200 contacts ≤~150 ms worst freeze; stress 100/8s→1200 contacts, DOM stays ~4k; medium 18/2.5s→near-zero blocking.
+
+Hard-won rules for running tests:
+
+- **Never edit app source while a test runs against the dev server** — HMR reloads the page mid-run, resets its state, and silently invalidates the data. Land all changes, typecheck, restart the dev server, then measure.
+- **Clean up between takes** or the machine starves: kill only OUR processes — match `ms-playwright` paths or the harness script name and filter to the actual `node`/browser PIDs. Never `pkill -f firefox` patterns that catch the user's `/usr/lib64/firefox`, never `lsof -ti :PORT | xargs kill` (kills client connections, has killed the user's browser).
+- playwright `page.evaluate` under tsx: pass browser-side code as **strings** (esbuild injects a `__name` helper into serialized functions that doesn't exist in the page); a string pageFunction with an arg is evaluated as an expression and silently no-ops — bake payloads in with `JSON.stringify`.
+- All test tooling is TypeScript. No Python in the codebase (user rule).
+- Manual live-signal testing (WebSDR → virtual sink → app mic) is documented in the README appendix; prefer a real display over xvfb for decode-quality comparisons (no GPU/vsync skews the decoder's CPU budget).
+
 ## Node version — always match `.nvmrc`
 
 This repo pins its Node version in `.nvmrc` (currently `v26.3.0`). Before running any `node`/`npm`/`npx` command in this repo, run `nvm use` (or `source ~/.nvm/nvm.sh && nvm use` if `nvm` isn't already loaded in the shell) so the command runs under the pinned version, not whatever Node happens to be active. Don't assume the ambient shell's Node matches — check with `node --version` if unsure. If the pinned version isn't installed via nvm, install it (`nvm install`) rather than falling back to a different version.

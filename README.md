@@ -623,6 +623,42 @@ docker run --rm \
 node lib/wasm_build/testbuild/test_decode.mjs [osd_depth]
 ```
 
+#### UI performance testbed
+
+`npm run test:perf` (headless Firefox via playwright-core; needs a playwright Firefox build in `~/.cache/ms-playwright` or `PLAYWRIGHT_FIREFOX_PATH`, plus a dev server started with `npm run dev:test` — port 3002; **port 3000 is reserved for the developer's own dev server and must never be used by test tooling**) injects synthetic decode windows through the real streaming pipeline and measures main-thread blocking via heartbeat gaps. Reference profiles, with the validated numbers as regression baselines:
+
+| Profile | Flags | Validated result |
+| --- | --- | --- |
+| target | `--msgs 50 --cadence 12000 --windows 40` | 1200 contacts, worst freeze 141 ms |
+| stress | `--msgs 100 --cadence 8000 --windows 45` | 1200 contacts, worst freeze 119 ms, DOM ~4.1k |
+| medium | `--msgs 18 --cadence 2500 --windows 120` | 725 contacts, near-zero blocking |
+
+Add `--cat` to also connect the simulated uSDX radio (`src/lib/cat/mockSerial.ts`) so the full serial CAT poll pipeline runs concurrently; per-sample output then includes poll-cadence stats (`maxPollGapMs` stretching = main-thread jam, the mechanism behind CAT-induced decode-delta drift).
+
+#### Manual live-signal test rig (WebSDR → app, Linux/PipeWire)
+
+For end-to-end testing with real FT8 signals and no radio attached, route a WebSDR tab's audio into the app's microphone via a virtual sink:
+
+```bash
+# 1. create a null sink; note the printed module id for cleanup
+pactl load-module module-null-sink sink_name=ft8test
+
+# 2. open a WebSDR (e.g. http://appr.org.br:8901/?tune=7074usb) in one tab
+#    CAVEAT: ?tune= sets the frequency but NOT the mode — click USB manually.
+#    Widen the passband (3k0 preset) to cover the full FT8 sub-band.
+
+# 3. open the app in another tab and Start Decoding, then move the streams:
+pactl list sink-inputs      # find the WebSDR tab's stream id
+pactl move-sink-input <id> ft8test
+pactl list source-outputs   # find the app tab's capture id
+pactl move-source-output <id> ft8test.monitor
+
+# 4. cleanup when done
+pactl unload-module <module-id-from-step-1>
+```
+
+Caveats learned the hard way: match streams by their id/app name carefully so you don't re-route another browser's audio; under `xvfb-run` there is no vsync (uncapped rAF makes the waterfall race) and no GPU (llvmpipe software rendering starves the WASM decoder — decode times roughly double), so prefer a real display for decode-quality comparisons.
+
 ## How to Use
 
 Select a mode from the top tab bar (RTTY / CW / SSTV / FT / MFSK), then click **Start** and allow microphone access when prompted.

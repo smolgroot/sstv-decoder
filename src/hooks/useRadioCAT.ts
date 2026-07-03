@@ -487,14 +487,27 @@ export function useRadioCAT(): RadioCATControls {
 
   const connect = useCallback(async (config: CATConnectionConfig) => {
     debugRef.current = config.debug;
-    if (!('serial' in navigator)) {
+    // Dev-only: the performance testbed sets window.__catUseMock to run the
+    // full CAT pipeline against a simulated radio (also enables CAT in
+    // browsers without Web Serial, e.g. Firefox). Dynamic import keeps the
+    // mock out of production bundles.
+    const useMock = process.env.NODE_ENV === 'development'
+      && typeof window !== 'undefined'
+      && (window as unknown as Record<string, unknown>).__catUseMock === true;
+    if (!useMock && !('serial' in navigator)) {
       setState(prev => ({ ...prev, error: 'Web Serial API not supported in this browser' }));
       return;
     }
-    log('info', `connecting — ${config.baudRate} ${config.dataBits}${config.parity === 'none' ? 'N' : config.parity[0].toUpperCase()}${config.stopBits} timeout:${config.timeoutMs}ms debug:${config.debug} profile:${config.rigProfile}`);
+    log('info', `connecting — ${config.baudRate} ${config.dataBits}${config.parity === 'none' ? 'N' : config.parity[0].toUpperCase()}${config.stopBits} timeout:${config.timeoutMs}ms debug:${config.debug} profile:${config.rigProfile}${useMock ? ' [MOCK]' : ''}`);
     try {
-      const serial = (navigator as Navigator & { serial: { requestPort(): Promise<SerialPort> } }).serial;
-      const port = await serial.requestPort();
+      let port: SerialPort;
+      if (useMock) {
+        const { createMockSerialPort } = await import('@/lib/cat/mockSerial');
+        port = createMockSerialPort() as unknown as SerialPort;
+      } else {
+        const serial = (navigator as Navigator & { serial: { requestPort(): Promise<SerialPort> } }).serial;
+        port = await serial.requestPort();
+      }
       await port.open({
         baudRate: config.baudRate, dataBits: config.dataBits,
         stopBits: config.stopBits, parity: config.parity, flowControl: 'none',
